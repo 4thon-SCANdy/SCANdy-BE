@@ -1,11 +1,11 @@
 from django.db import models
-from apps.users.models import Users
+from apps.users.models import User
 
 
 class Calendar(models.Model):
     id = models.AutoField(primary_key=True)
     user = models.ForeignKey(
-        Users,
+        User,
         on_delete=models.CASCADE,
         related_name='calendars',
         db_column='user_id'
