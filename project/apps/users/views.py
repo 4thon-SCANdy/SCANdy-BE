@@ -73,7 +73,7 @@ def google_oauth_callback(request: HttpRequest):
         google_sub=google_sub,
         defaults={
             "email": email,
-            "google_sync": True,
+            "is_google_sync": True,
             "google_refresh_token": refresh_token
         }
     )
