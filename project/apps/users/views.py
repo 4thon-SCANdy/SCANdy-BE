@@ -64,29 +64,13 @@ def google_oauth_callback(request: HttpRequest):
         settings.GOOGLE_CLIENT_ID,
     )
 
-    # google_sub, email 받기.
-    google_sub = id_info.get("sub")
-    email = id_info.get("email")
+    # get user.
+    user = User.get_or_create_google_user(id_info, refresh_token)
 
-    # user가 없으면 생성, 있으면 get.
-    user, created = User.objects.get_or_create(
-        google_sub=google_sub,
-        defaults={
-            "email": email,
-            "is_google_sync": True,
-            "google_refresh_token": refresh_token
-        }
-    )
-
-    if not created:
-        if refresh_token:
-            user.google_refresh_token = refresh_token
-        user.save()
-
-    # 5) 세션에 로그인 상태 저장
+    # 세션에 로그인 상태 저장
     request.session['user_id'] = user.id
     request.session['google_access_token'] = access_token
 
-    return Response({"message": "login successful", "email": email})
+    return Response({"message": "login successful", "email": user.email})
 
 

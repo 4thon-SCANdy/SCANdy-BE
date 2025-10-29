@@ -10,6 +10,24 @@ class User(models.Model):
     google_sub = models.CharField(max_length=255, null=True, blank=True)
     google_refresh_token = models.CharField(max_length=255, null=True, blank=True)
     
+    # id_info에서 정보를 뽑아 user 저장혹은 그냥 리턴.
+    @classmethod
+    def get_or_create_google_user(cls, id_info, refresh_token=None):
+        google_sub = id_info.get("sub")
+        email = id_info.get("email")
+        user, created = cls.objects.get_or_create(
+            google_sub=google_sub,
+            defaults={
+                "email": email,
+                "is_google_sync": True,
+                "google_refresh_token": refresh_token
+            }
+        )
+        if not created and refresh_token:
+            user.google_refresh_token = refresh_token
+            user.save()
+        return user
+
     def __str__(self):
         return self.email
     
