@@ -40,6 +40,10 @@ INSTALLED_APPS = [
 
     # your apps here
     'apps.gpt',
+    'apps.users',
+    'apps.tasks',
+    'apps.calendars',
+
 ]
 
 MIDDLEWARE = [
