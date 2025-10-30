@@ -16,7 +16,8 @@ from google.auth.transport import requests as google_request
 
 # externals
 from .models import User
-from .services import get_google_flow, create_jwt_token
+from .services import get_google_flow, create_jwt_token, get_user_from_token
+from .serializers import UserSerializer
 
 @api_view(['GET'])
 def google_auth_url(request: HttpRequest):
@@ -74,3 +75,14 @@ def google_oauth_callback(request: HttpRequest):
     return Response({"token": jwt_token, "message": "login successful", "email": user.email})
 
 
+class UserFromTokenView(APIView):
+    def post(self, request):
+        token = request.data.get("token")
+        if not token:
+            return Response({"error": "Token is required"}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 토큰에서 user 가져오기
+        user = get_user_from_token(token)
+
+        serializer = UserSerializer(user)
+        return Response(serializer.data)
