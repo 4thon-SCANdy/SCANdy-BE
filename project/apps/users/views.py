@@ -16,7 +16,7 @@ from google.auth.transport import requests as google_request
 
 # externals
 from .models import User
-from .services import get_google_flow
+from .services import get_google_flow, create_jwt_token
 
 @api_view(['GET'])
 def google_auth_url(request: HttpRequest):
@@ -67,10 +67,10 @@ def google_oauth_callback(request: HttpRequest):
     # get user.
     user = User.get_or_create_google_user(id_info, refresh_token)
 
-    # 세션에 로그인 상태 저장
-    request.session['user_id'] = user.id
+    # 세션에 로그인 상태 저장, jwt 토큰 발급.
+    jwt_token = create_jwt_token(user)
     request.session['google_access_token'] = access_token
 
-    return Response({"message": "login successful", "email": user.email})
+    return Response({"token": jwt_token, "message": "login successful", "email": user.email})
 
 

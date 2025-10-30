@@ -1,6 +1,7 @@
 django
 pillow
 djangorestframework
+django-environ
 
 PyJWT
 
