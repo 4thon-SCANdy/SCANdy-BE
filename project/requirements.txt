@@ -2,6 +2,8 @@ django
 pillow
 djangorestframework
 
+PyJWT
+
 # google libs
 google-api-python-client
 google-auth-httplib2
