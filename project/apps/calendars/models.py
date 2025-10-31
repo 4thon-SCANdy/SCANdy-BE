@@ -4,15 +4,13 @@ from apps.users.models import User
 
 class Calendar(models.Model):
     id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='calendars',
+        related_name='calendar',
         db_column='user_id'
     )
-    name = models.CharField(max_length=100, null=False)
     google_calendar_id = models.CharField(max_length=255, null=True, blank=True)
-    is_primary = models.BooleanField(default=False)
 
 class Tag(models.Model):
     id = models.AutoField(primary_key=True)
