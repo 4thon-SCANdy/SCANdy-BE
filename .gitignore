@@ -6,3 +6,5 @@ __pycache__/
 project/db/db.sqlite3
 project/security/*.json
 project/.env
+
+project/static/*
