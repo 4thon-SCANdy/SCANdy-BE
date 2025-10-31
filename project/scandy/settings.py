@@ -25,15 +25,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # 구글 인증키(credentials.json)파일 설정.
-GOOGLE_OAUTH_JSON = BASE_DIR / "security" / "credentials.json"
+# GOOGLE_OAUTH_JSON = BASE_DIR / "security" / "credentials.json"
 
-GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
-GOOGLE_CLIENT_PASSWORD = env("GOOGLE_CLIENT_PASSWORD")
+# GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
+# GOOGLE_CLIENT_PASSWORD = env("GOOGLE_CLIENT_PASSWORD")
 
 # JWT secret key 설정
-JWT_SECRET_KEY = env("JWT_SECRET_KEY")
-JWT_ALGORITHM = "HS256"
-JWT_EXP_DELTA_SECONDS = 3600 # 1시간
+# JWT_SECRET_KEY = env("JWT_SECRET_KEY")
+# JWT_ALGORITHM = "HS256"
+# JWT_EXP_DELTA_SECONDS = 3600 # 1시간
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
@@ -59,6 +59,7 @@ INSTALLED_APPS = [
 
     # external libs
     'rest_framework',
+    'drf_spectacular',
 
     # your apps here
     'apps.gpt',
@@ -67,6 +68,21 @@ INSTALLED_APPS = [
     'apps.calendars',
 
 ]
+
+REST_FRAMEWORK = {
+    # YOUR SETTINGS  drf의 schema 클래스를 drf-specacular의 AutoSchema로 교체해줍니다.
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+}
+
+SPECTACULAR_SETTINGS = {
+    # OAS3 Meta정보 API를 비노출 처리한다.
+    'SERVE_INCLUDE_SCHEMA': False,
+}
+
+SPECTACULAR_SETTINGS = {
+    # 웹 인터페이스에서 파일 업로드 기능 제공 설정
+    'COMPONENT_SPLIT_REQUEST': True,
+}
 
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
