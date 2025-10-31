@@ -22,6 +22,7 @@ from drf_spectacular.views import SpectacularJSONAPIView, SpectacularRedocView, 
 urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('apps.users.urls')),
+    path('calendar/', include('apps.calendars.urls')),
     path('api/schema/', SpectacularJSONAPIView.as_view(), name='schema-json'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema-json'), name='redoc'),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema-json"), name="swagger-ui"),

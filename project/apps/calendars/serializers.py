@@ -24,6 +24,12 @@ class ScheduleSerializer(serializers.ModelSerializer):
         fields = ['id', 'google_event_id', 'title', "tags",
                   'content', 'start_datetime', 'end_datetime', 
                   'all_day', 'repeat', 'created_at', 'updated_at']
+        read_only_fields = ['id', 'created_at', 'updated_at']
         
     def create(self, validated_data):
         return Schedule.objects.create(**validated_data)
+    
+    def validate(self, data):
+        if data['start_datetime'] > data['end_datetime']:
+            raise serializers.ValidationError("시작 시간이 종료 시간보다 늦을 수 없습니다.")
+        return data
