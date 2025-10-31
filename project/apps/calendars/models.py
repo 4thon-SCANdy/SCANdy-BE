@@ -62,8 +62,8 @@ class Schedule(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True)
     
     def save(self, *args, **kwargs):
-        # 만약 repeat가 없다면 repeat를 end_datetime과 똑같이 설정한다.
-        if not self.repeat or self.repeat == "NONE":
+        # 만약 repeat가 NONE이라면 until을 end_datetime과 똑같이 설정한다.
+        if self.repeat == "NONE":
             self.until = self.end_datetime
             
         super().save(*args, **kwargs)

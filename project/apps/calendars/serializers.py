@@ -10,6 +10,9 @@ class ScheduleCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
         exclude = ('id', 'calendar', 'created_at', 'updated_at')
+        extra_kwargs = {
+                'until': {'required': False}
+        }
         
     def create(self, validated_data):
         user = self.context['request'].user

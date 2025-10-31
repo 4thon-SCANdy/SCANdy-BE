@@ -46,16 +46,16 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # 만약 start와 end가 있다면, db에서 범위 1차 필터링(성능을 위해.)
         if start_datetime and end_datetime:
             queryset = queryset.filter(
-                start_datetime__lt=end_datetime,
-                end_datetime__gt=start_datetime
+                start_datetime__lte=end_datetime,
+                until__gte=start_datetime
             )
             # range를 설정: 프론트에서 입력한 start_datetime, end_datetime.
             filter_range = TimeRange(
                 start=parse_datetime(start_datetime),
                 end=parse_datetime(end_datetime)
             )
-            # 만약 overlaps. (작성된 함수 확인)라면 넣고, 아니면 제외.
-            schedules = [sched for sched in queryset if filter_range.overlaps(TimeRange(sched.start_datetime, sched.end_datetime))]
+            # 만약 overlaps. (작성된 함수 확인)라면 넣고, 아니면 제외. (임시) 나중에 다시 만들어야 함.
+            schedules = [sched for sched in queryset if filter_range.overlaps(TimeRange(sched.start_datetime, sched.until))]
         
         serializer = ScheduleSerializer(schedules, many=True)
         return Response(serializer.data, status=status.HTTP_200_OK)
