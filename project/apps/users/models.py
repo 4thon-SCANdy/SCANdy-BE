@@ -10,6 +10,11 @@ class User(models.Model):
     google_sub = models.CharField(max_length=255, null=True, blank=True)
     google_refresh_token = models.CharField(max_length=255, null=True, blank=True)
     
+    # 보안용 함수.
+    @property
+    def is_authenticated(self):
+        return True
+    
     # id_info에서 정보를 뽑아 user 저장혹은 그냥 리턴.
     @classmethod
     def get_or_create_google_user(cls, id_info, refresh_token=None):
