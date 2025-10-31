@@ -2,6 +2,7 @@ django
 pillow
 djangorestframework
 django-environ
+django-cors-headers
 drf-spectacular==0.28.0
 
 PyJWT

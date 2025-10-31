@@ -39,12 +39,12 @@ environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = 'django-insecure-gwx%u3wc7+8e@nab#$t2c(y+!+68j5)b=a5$@9%25f6yhi99x$'
+SECRET_KEY = env('SECRET_KEY')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = env('DEBUG')
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = ['*']
 
 
 # Application definition
@@ -60,6 +60,7 @@ INSTALLED_APPS = [
     # external libs
     'rest_framework',
     'drf_spectacular',
+    'corsheaders'
 
     # your apps here
     'apps.gpt',
@@ -87,6 +88,7 @@ SPECTACULAR_SETTINGS = {
 MIDDLEWARE = [
     'django.middleware.security.SecurityMiddleware',
     'django.contrib.sessions.middleware.SessionMiddleware',
+    'corsheaders.middleware.CorsMiddleware'
     'django.middleware.common.CommonMiddleware',
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
@@ -160,6 +162,34 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/5.2/howto/static-files/
 
 STATIC_URL = 'static/'
+STATIC_ROOT = os.path.join(BASE_DIR, 'static')
+
+CORS_ALLOWED_ORIGINS = [ #API 호출할 수 있는 출처 목록
+  "http://127.0.0.1:8000",
+  "https://127.0.0.1:8000",
+  "http://localhost:5173",
+  "https://sein0327.shop",
+  "https://api.sein0327.shop",
+]
+
+CSRF_TRUSTED_ORIGINS = [ #CSRF 토큰 검증 통과
+  "http://127.0.0.1:8000",
+  "https://127.0.0.1:8000",
+  "http://localhost:5173",
+  "https://sein0327.shop",
+  "https://api.sein0327.shop",
+]
+CORS_ALLOW_CREDENTIALS = True #HTTP 자격증명 추가
+CSRF_COOKIE_SECURE = True #http 보안!
+SESSION_COOKIE_SECURE = True #위와 동일
+
+SESSION_COOKIE_AGE = 86400  # 초 단위: 24시간 = 86400초
+SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 브라우저를 닫아도 세션 유지
+
+SESSION_COOKIE_SAMESITE = 'None'
+CSRF_COOKIE_SAMESITE = 'None'
+
+# FRONT_ORIGIN = env.str("FRONT_ORIGIN").rstrip("/")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
