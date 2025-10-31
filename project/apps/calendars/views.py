@@ -26,14 +26,21 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             calendar=self.request.user.calendar
         )
     # list의 경우 파라미터에 start_datetime, end_datetime이 있다면 그걸로 필터링 해야 한다.
+    # 또한 태그 필터링도 지원하여야 한다. tag로 파라미터를 받는다.
     # 없는 경우 그냥 get_queryset을 받는다. (user의 모든 일정)
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         
         start_datetime = request.query_params.get('start_datetime', None)
         end_datetime = request.query_params.get('end_datetime', None)
+        tag = request.query_params.get('tag', None)
         
-        # 미리 기존 queryset을 저장. (시간 필터링을 위해)
+        # 먼저 db query로 모두 필터링이 가능한 tag부터 필터링 한다.
+        # 태그 필터링.
+        if tag:
+            queryset = queryset.filter(tag__id=tag)
+        
+        # 미리 기존 queryset을 저장. (필터링을 위해)
         schedules = queryset
         
         # 만약 start와 end가 있다면, db에서 범위 1차 필터링(성능을 위해.)
