@@ -10,7 +10,6 @@ class Calendar(models.Model):
         related_name='calendar',
         db_column='user_id'
     )
-    google_calendar_id = models.CharField(max_length=255, null=True, blank=True)
 
 class Tag(models.Model):
     id = models.AutoField(primary_key=True)

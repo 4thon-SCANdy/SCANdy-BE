@@ -27,6 +27,18 @@ class User(models.Model):
             user.google_refresh_token = refresh_token
             user.save()
         return user
+    
+    # save를 오버라이딩 해서 calendar 만들지 결정.
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        
+        super().save(*args, **kwargs)
+        
+        # 만약 user가 새로 생성되는 거라면 calendar도 생성.
+        if is_new:
+            from apps.calendars.models import Calendar
+            Calendar.objects.create(user=self)
+
 
     def __str__(self):
         return self.email
