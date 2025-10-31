@@ -55,8 +55,16 @@ class Schedule(models.Model):
     content = models.TextField(null=True, blank=True)
     start_datetime = models.DateTimeField(null=False)
     end_datetime = models.DateTimeField(null=False)
+    until = models.DateTimeField(null=False)
     all_day = models.BooleanField(null=True, default=False)
-    repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=True, blank=True)
+    repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=False, blank=False, default="NONE")
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
-
+    
+    def save(self, *args, **kwargs):
+        # 만약 repeat가 없다면 repeat를 end_datetime과 똑같이 설정한다.
+        if not self.repeat or self.repeat == "NONE":
+            self.until = self.end_datetime
+            
+        super().save(*args, **kwargs)
+        
