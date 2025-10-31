@@ -4,6 +4,9 @@ from datetime import datetime, timedelta, timezone
 from django.conf import settings
 from django.http.request import HttpRequest
 
+from rest_framework.authentication import BaseAuthentication
+from rest_framework import exceptions
+
 from google_auth_oauthlib.flow import InstalledAppFlow
 
 # models
@@ -56,3 +59,23 @@ def get_user_from_token(token):
     except User.DoesNotExist:
         print(f"Error: User with id {user_id} does not exist")
         return None
+
+# user 인증 클래스. 계속해서 사용해야 함.
+class JWTAuthentication(BaseAuthentication):
+    def authenticate(self, request):
+        auth_header = request.headers.get('token')
+        if not auth_header:
+            return None
+
+        try:
+            token_type, token = auth_header.split()
+            if token_type.lower() != 'bearer':
+                return None
+        except ValueError:
+            return None
+
+        user = get_user_from_token(token)
+        if user is None:
+            raise exceptions.AuthenticationFailed('Invalid or expired token')
+
+        return (user, token)
