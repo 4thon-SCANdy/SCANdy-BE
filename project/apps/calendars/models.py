@@ -4,15 +4,12 @@ from apps.users.models import User
 
 class Calendar(models.Model):
     id = models.AutoField(primary_key=True)
-    user = models.ForeignKey(
+    user = models.OneToOneField(
         User,
         on_delete=models.CASCADE,
-        related_name='calendars',
+        related_name='calendar',
         db_column='user_id'
     )
-    name = models.CharField(max_length=100, null=False)
-    google_calendar_id = models.CharField(max_length=255, null=True, blank=True)
-    is_primary = models.BooleanField(default=False)
 
 class Tag(models.Model):
     id = models.AutoField(primary_key=True)
@@ -58,8 +55,16 @@ class Schedule(models.Model):
     content = models.TextField(null=True, blank=True)
     start_datetime = models.DateTimeField(null=False)
     end_datetime = models.DateTimeField(null=False)
+    until = models.DateTimeField(null=False)
     all_day = models.BooleanField(null=True, default=False)
-    repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=True, blank=True)
+    repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=False, blank=False, default="NONE")
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
-
+    
+    def save(self, *args, **kwargs):
+        # 만약 repeat가 NONE이라면 until을 end_datetime과 똑같이 설정한다.
+        if self.repeat == "NONE":
+            self.until = self.end_datetime
+            
+        super().save(*args, **kwargs)
+        

@@ -3,6 +3,7 @@ pillow
 djangorestframework
 django-environ
 
+python-dateutil
 PyJWT
 
 # google libs
