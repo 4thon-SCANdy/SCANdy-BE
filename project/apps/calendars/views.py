@@ -13,6 +13,7 @@ from external.time_manager import TimeRange
 from .models import Schedule, Tag
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
+from .services import expand_repeating_schedule
 
 class ScheduleViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -40,31 +41,42 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         if tag:
             queryset = queryset.filter(tag__id=tag)
         
-        # 미리 기존 queryset을 저장. (필터링을 위해)
-        schedules = queryset
-        
-        # 만약 start와 end가 있다면, db에서 범위 1차 필터링(성능을 위해.)
+        # db 1차 날짜 필터링. db에서 범위 1차 필터링(성능을 위해.)
         if start_datetime and end_datetime:
             queryset = queryset.filter(
                 start_datetime__lte=end_datetime,
                 until__gte=start_datetime
             )
-            # range를 설정: 프론트에서 입력한 start_datetime, end_datetime.
+           
+        serializer = ScheduleSerializer(queryset, many=True)
+        
+        # 일단 db에 있는 schedule들만 저장.
+        db_sched_list: list = serializer.data
+        
+        # 여기서 구글의 스케줄 리스트를 sched_list에 추가해야 함.
+        
+        # 스케쥴을 repeat에 따라 분리한다.
+        expanded_scheds: list = expand_repeating_schedule(db_sched_list)
+        
+        # 2차 필터링. expanded 된 것들도 전부 필터링한다.
+        if start_datetime and end_datetime:
+             # range를 설정: 프론트에서 입력한 start_datetime, end_datetime.
             filter_range = TimeRange(
                 start=parse_datetime(start_datetime),
                 end=parse_datetime(end_datetime)
             )
-            # 만약 overlaps. (작성된 함수 확인)라면 넣고, 아니면 제외. (임시) 나중에 다시 만들어야 함.
-            schedules = [sched for sched in queryset if filter_range.overlaps(TimeRange(sched.start_datetime, sched.until))]
+            expanded_scheds = [
+                sched for sched in expanded_scheds if filter_range.overlaps(TimeRange(parse_datetime(sched['start_datetime']), parse_datetime(sched['end_datetime'])))]
         
-        serializer = ScheduleSerializer(schedules, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
+        
+        return Response(expanded_scheds, status=status.HTTP_200_OK)
         
     def create(self, request, *args, **kwargs):
         serializer = ScheduleCreateSerializer(data=request.data, context={'request': request})
         
         if serializer.is_valid():
             schedule = serializer.save()
+            # Serializer에 구글 연동 관련 데이터를 추가해야 함.
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
