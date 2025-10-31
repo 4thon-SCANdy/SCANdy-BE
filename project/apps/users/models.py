@@ -10,6 +10,11 @@ class User(models.Model):
     google_sub = models.CharField(max_length=255, null=True, blank=True)
     google_refresh_token = models.CharField(max_length=255, null=True, blank=True)
     
+    # 보안용 함수.
+    @property
+    def is_authenticated(self):
+        return True
+    
     # id_info에서 정보를 뽑아 user 저장혹은 그냥 리턴.
     @classmethod
     def get_or_create_google_user(cls, id_info, refresh_token=None):
@@ -27,6 +32,18 @@ class User(models.Model):
             user.google_refresh_token = refresh_token
             user.save()
         return user
+    
+    # save를 오버라이딩 해서 calendar 만들지 결정.
+    def save(self, *args, **kwargs):
+        is_new = self.pk is None
+        
+        super().save(*args, **kwargs)
+        
+        # 만약 user가 새로 생성되는 거라면 calendar도 생성.
+        if is_new:
+            from apps.calendars.models import Calendar
+            Calendar.objects.create(user=self)
+
 
     def __str__(self):
         return self.email

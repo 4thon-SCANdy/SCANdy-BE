@@ -5,6 +5,7 @@ django-environ
 django-cors-headers
 drf-spectacular==0.28.0
 
+python-dateutil
 PyJWT
 
 # google libs
