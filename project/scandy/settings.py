@@ -25,15 +25,15 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # 구글 인증키(credentials.json)파일 설정.
-# GOOGLE_OAUTH_JSON = BASE_DIR / "security" / "credentials.json"
+GOOGLE_OAUTH_JSON = BASE_DIR / "security" / "credentials.json"
 
-# GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
-# GOOGLE_CLIENT_PASSWORD = env("GOOGLE_CLIENT_PASSWORD")
+GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
+GOOGLE_CLIENT_PASSWORD = env("GOOGLE_CLIENT_PASSWORD")
 
 # JWT secret key 설정
-# JWT_SECRET_KEY = env("JWT_SECRET_KEY")
-# JWT_ALGORITHM = "HS256"
-# JWT_EXP_DELTA_SECONDS = 3600 # 1시간
+JWT_SECRET_KEY = env("JWT_SECRET_KEY")
+JWT_ALGORITHM = "HS256"
+JWT_EXP_DELTA_SECONDS = 3600 # 1시간
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/5.2/howto/deployment/checklist/
