@@ -8,7 +8,7 @@ from rest_framework.response import Response
 from rest_framework import status
 
 from .models import SessionToken
-from .sevices import make_token, hash_token
+from .services import make_token, hash_token, get_user_from_non_google_token
 
 from apps.users.serializers import UserSerializer
 from apps.users.models import User
@@ -37,7 +37,7 @@ class NonGoogleRegisterView(APIView):
             value=token,
             expires=expires_at,
             httponly=True,
-            samesite='Strict',
+            samesite='Lax',
             path='/',
         )
 
@@ -47,25 +47,7 @@ class NonGoogleRegisterView(APIView):
 # 로그인 뷰
 class NonGoogleLoginView(APIView):
     def post(self, request):
-        # 토큰 우선순위: 쿠키 -> 요청 바디
-        non_google_token = request.COOKIES.get('non_google_token')
-        if not non_google_token:
-            return Response({"detail": "no token."}, status=status.HTTP_400_BAD_REQUEST)
-
-        token_hash = hash_token(non_google_token)
-        now = timezone.now()
-
-        session = (
-            SessionToken.objects
-            .select_related('user')
-            .filter(token_hash=token_hash, expires_at__gt=now)
-            .first()
-        )
-
-        if not session:
-            return Response({"detail": "invalid or expired token."}, status=status.HTTP_401_UNAUTHORIZED)
-
-        user = session.user
+        user = get_user_from_non_google_token(request)
         jwt_token = create_jwt_token(user)
         
         return Response({"token": jwt_token ,"message": "login success"})
