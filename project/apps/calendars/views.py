@@ -4,6 +4,8 @@ from django.utils.dateparse import parse_datetime
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+
 
 from apps.users.services import JWTAuthentication
 
@@ -93,6 +95,23 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             schedule = serializer.save()
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=["GET"])
+    # 태그명을 받아, 태그명에 해당하는 일정만 보여주기
+    def filter(self, request):
+        tag_name = request.query_params.get("tag")
+        
+        if not tag_name:
+            return Response(
+                {"error": "tag가 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Tag 모델의 name 기준으로 필터링
+        tag_schedules = Schedule.objects.filter(tags__name=tag_name)
+
+        serializer = self.get_serializer(tag_schedules, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
         
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -129,4 +148,6 @@ class TagViewSet(viewsets.ModelViewSet):
             tag = serializer.save()
             return Response(TagSerializer(tag).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 
