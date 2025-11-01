@@ -2,6 +2,7 @@ from datetime import timedelta
 from dateutil.relativedelta import relativedelta
 
 from django.utils import timezone
+from django.db import transaction
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -17,6 +18,25 @@ from apps.users.services import create_jwt_token
 # 구글 연동 안하는 사용자 회원가입.
 class NonGoogleRegisterView(APIView):
     def post(self, request):
+        response = Response({"message": "register success."})
+        
+        # 만약 이미 있는 사용자라면 기존 사용자를 삭제한다.
+        try:
+            user = get_user_from_non_google_token(request)
+            
+            if user:
+                # atomic하게 삭제.
+                with transaction.atomic():
+                    user.delete()
+                    
+                # cookie를 삭제.        
+                response.delete_cookie('non_google_token', path='/')
+        except Exception as e:
+            print("Exception in get_user_from_non_google_token block:", e)
+            import traceback
+            traceback.print_exc()  # 전체 트레이스백 출력
+            user = None
+        
         token = make_token()
         token_hash = hash_token(token)
         expires_at = timezone.now() + relativedelta(hours=1)  # 1년으로 해도 되지만 우선 1시간으로 설정.
@@ -31,7 +51,6 @@ class NonGoogleRegisterView(APIView):
             expires_at=expires_at
         )
         
-        response = Response({"message": "register success."})
         response.set_cookie(
             key='non_google_token',
             value=token,

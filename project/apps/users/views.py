@@ -1,6 +1,7 @@
 # django
 from django.conf import settings
 from django.http.request import HttpRequest
+from django.db import transaction
 
 # rest_framework
 from rest_framework.response import Response
@@ -70,6 +71,10 @@ def google_oauth_callback(request: HttpRequest):
     # 만약 쿠키에 non_google_token이 있다면 user가 구글 연동인지 확인 후 진행.
     # 없으면 에러가 발생하기에 try catch를 해줘야 함.
     # 또한, 구글 연동을 하려고 하는데 이미 있다면 user를 바꿔서 처리해야 함.
+    
+    # 쿠키 관리를 위해 response 객체를 생성.
+    response: Response = Response()
+    
     try:
         user: User = get_user_from_non_google_token(request)
         print(user)
@@ -90,6 +95,13 @@ def google_oauth_callback(request: HttpRequest):
             )
             
             serializer.is_valid(raise_exception=True)
+            # 쿠키에 있는 토큰을 삭제하고, session_token을 제거한다.
+            # atomic하게 삭제.
+            with transaction.atomic():
+                user.session.delete()
+            # cookie를 삭제.        
+            response.delete_cookie('non_google_token', path='/')
+            
             user = serializer.save()
         # 이미 google_sync라면 일반 google_user validation으로 넘어간다.
         else:
