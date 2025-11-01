@@ -102,6 +102,8 @@ def google_oauth_callback(request: HttpRequest):
             # cookie를 삭제.        
             response.delete_cookie('non_google_token', path='/')
             
+            # 구글 캘린더를 업데이트 해야 함.
+            
             user = serializer.save()
         # 이미 google_sync라면 일반 google_user validation으로 넘어간다.
         else:
@@ -113,7 +115,10 @@ def google_oauth_callback(request: HttpRequest):
         user = None
     
     if not user:
-        user = User.get_or_create_google_user(id_info, refresh_token)
+        user, created = User.get_or_create_google_user(id_info, refresh_token)
+        if created:
+            #구글 캘린더를 업데이트 해야 함.
+            pass
 
     # 세션에 로그인 상태 저장, jwt 토큰 발급.
     jwt_token = create_jwt_token(user)

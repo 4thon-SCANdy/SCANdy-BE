@@ -31,7 +31,7 @@ class User(models.Model):
         if not created and refresh_token:
             user.google_refresh_token = refresh_token
             user.save()
-        return user
+        return user, created
     
     # save를 오버라이딩 해서 calendar 만들지 결정.
     def save(self, *args, **kwargs):
