@@ -1,6 +1,7 @@
 # django
 from django.conf import settings
 from django.http.request import HttpRequest
+from django.db import transaction
 
 # rest_framework
 from rest_framework.response import Response
@@ -15,6 +16,8 @@ from google.oauth2 import id_token
 from google.auth.transport import requests as google_request
 
 # externals
+from apps.session_tokens.services import get_user_from_non_google_token
+
 from .models import User
 from .services import get_google_flow, create_jwt_token, get_user_from_token
 from .serializers import UserSerializer
@@ -64,9 +67,53 @@ def google_oauth_callback(request: HttpRequest):
         request_adapter,
         settings.GOOGLE_CLIENT_ID,
     )
-
-    # get user.
-    user = User.get_or_create_google_user(id_info, refresh_token)
+    
+    # 만약 쿠키에 non_google_token이 있다면 user가 구글 연동인지 확인 후 진행.
+    # 없으면 에러가 발생하기에 try catch를 해줘야 함.
+    # 또한, 구글 연동을 하려고 하는데 이미 있다면 user를 바꿔서 처리해야 함.
+    
+    # 쿠키 관리를 위해 response 객체를 생성.
+    response: Response = Response()
+    
+    try:
+        user: User = get_user_from_non_google_token(request)
+        print(user)
+        
+        # 만약 이미 user가 있고, is_google_sync가 아니라면 새로 구글 연동 user로 업데이트함.
+        if user and not user.is_google_sync:
+            google_sub = id_info.get("sub")
+            email = id_info.get("email")
+            
+            serializer = UserSerializer(
+                user,
+                data={
+                    "email": email,
+                    "google_sub": google_sub,
+                    "is_google_sync": True,
+                    "google_refresh_token": refresh_token
+                },
+            )
+            
+            serializer.is_valid(raise_exception=True)
+            # 쿠키에 있는 토큰을 삭제하고, session_token을 제거한다.
+            # atomic하게 삭제.
+            with transaction.atomic():
+                user.session.delete()
+            # cookie를 삭제.        
+            response.delete_cookie('non_google_token', path='/')
+            
+            user = serializer.save()
+        # 이미 google_sync라면 일반 google_user validation으로 넘어간다.
+        else:
+            user = None
+    except Exception as e:
+        print("Exception in get_user_from_non_google_token block:", e)
+        import traceback
+        traceback.print_exc()  # 전체 트레이스백 출력
+        user = None
+    
+    if not user:
+        user = User.get_or_create_google_user(id_info, refresh_token)
 
     # 세션에 로그인 상태 저장, jwt 토큰 발급.
     jwt_token = create_jwt_token(user)

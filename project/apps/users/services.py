@@ -39,7 +39,6 @@ def create_jwt_token(user: User):
         "exp": datetime.now(timezone.utc) + timedelta(seconds=settings.JWT_EXP_DELTA_SECONDS),
         "iat": datetime.now(timezone.utc),
     }
-    print(type(settings.JWT_SECRET_KEY))
     token = jwt.encode(payload, settings.JWT_SECRET_KEY, algorithm=settings.JWT_ALGORITHM)
     return token
 

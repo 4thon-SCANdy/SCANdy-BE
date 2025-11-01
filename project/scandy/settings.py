@@ -67,7 +67,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.tasks',
     'apps.calendars',
-
+    'apps.session_tokens',
 ]
 
 REST_FRAMEWORK = {
