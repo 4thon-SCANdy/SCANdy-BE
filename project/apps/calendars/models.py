@@ -1,6 +1,7 @@
 from django.db import models
 
 from apps.users.models import User
+from apps.google_calendar.models import GoogleCalendar
 
 from external.time_manager import KST
 
@@ -51,6 +52,15 @@ class Schedule(models.Model):
         blank=True,
         related_name='schedules',
         db_column='tag_id'
+    )
+    google_calendar = models.ForeignKey(
+        GoogleCalendar,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='google_calendars',
+        db_column='google_calendar_id',
+        default=None,
     )
     google_event_id = models.CharField(max_length=255, null=True, blank=True)
     title = models.CharField(max_length=200, null=False)

@@ -1,7 +1,11 @@
 from django.db import transaction, IntegrityError
 import dateutil.parser
 from rest_framework import serializers
+
 from .models import GoogleCalendar
+
+from apps.calendars.models import Schedule
+
 
 class GoogleCalendarSerializer(serializers.ModelSerializer):
     class Meta:
@@ -79,93 +83,7 @@ class GoogleCalendarAPISerializer(serializers.Serializer):
             'is_primary': bool(raw.get('primary', False)),
         }
         return normalized
-    # events_result의 예시 JSON
-    '''
-    {
-    "kind": "calendar#event",
-    "etag": "\"3524193503467166\"",
-    "id": "014ddmn24f2ej1hair13qtk4rc",
-    "status": "confirmed",
-    "htmlLink": "https://www.google.com/calendar/event?eid=MDE0ZGRtbjI0ZjJlajFoYWlyMTNxdGs0cmNfMjAyNTExMDQgc2FueW9lbnRlcnRhaW5AbQ",
-    "created": "2025-11-02T15:04:51.000Z",
-    "updated": "2025-11-02T15:19:11.733Z",
-    "summary": "test",
-    "colorId": "8",
-    "creator": {
-        "email": "sanyoentertain@gmail.com",
-        "self": true
-    },
-    "organizer": {
-        "email": "sanyoentertain@gmail.com",
-        "self": true
-    },
-    "start": {
-        "date": "2025-11-04"
-    },
-    "end": {
-        "date": "2025-11-05"
-    },
-    "recurrence": [
-        "RRULE:FREQ=WEEKLY;WKST=SU;UNTIL=20260216;BYDAY=TU"
-    ],
-    "transparency": "transparent",
-    "iCalUID": "014ddmn24f2ej1hair13qtk4rc@google.com",
-    "sequence": 0,
-    "reminders": {
-        "useDefault": false
-    },
-    "eventType": "default"
-    }
-
-'''
-
-
-'''
-{
-  "kind": "calendar#event",
-  "etag": "\"3524195288106494\"",
-  "id": "014ddmn24f2ej1hair13qtk4rc",
-  "status": "confirmed",
-  "htmlLink": "https://www.google.com/calendar/event?eid=MDE0ZGRtbjI0ZjJlajFoYWlyMTNxdGs0cmNfMjAyNTExMDRUMDEwMDAwWiBzYW55b2VudGVydGFpbkBt",
-  "created": "2025-11-02T15:04:51.000Z",
-  "updated": "2025-11-02T15:34:04.053Z",
-  "summary": "test",
-  "colorId": "8",
-  "creator": {
-    "email": "sanyoentertain@gmail.com",
-    "self": true
-  },
-  "organizer": {
-    "email": "sanyoentertain@gmail.com",
-    "self": true
-  },
-  "start": {
-    "dateTime": "2025-11-04T10:00:00+09:00",
-    "timeZone": "Asia/Seoul"
-  },
-  "end": {
-    "dateTime": "2025-11-04T11:00:00+09:00",
-    "timeZone": "Asia/Seoul"
-  },
-  "recurrence": [
-    "RRULE:FREQ=WEEKLY;WKST=SU;UNTIL=20260216T145959Z;BYDAY=TU"
-  ],
-  "transparency": "transparent",
-  "iCalUID": "014ddmn24f2ej1hair13qtk4rc@google.com",
-  "sequence": 1,
-  "reminders": {
-    "useDefault": false,
-    "overrides": [
-      {
-        "method": "popup",
-        "minutes": 10
-      }
-    ]
-  },
-  "eventType": "default"
-}
-
-'''
+    
 # google calendar event에 나온 json을 event의 json 형태로 변환하는 Serializer
 class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
     def to_internal_value(self, data):
@@ -215,5 +133,4 @@ class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
             'colorId': colorId if colorId else 0,
         }
         return internal
-
-
+    

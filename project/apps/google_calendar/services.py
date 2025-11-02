@@ -3,11 +3,13 @@ import datetime
 from googleapiclient.discovery import build
 
 from apps.users.models import User
+from apps.calendars.models import Schedule
 
 from .serializers import (GoogleCalendarSerializer, GoogleCalendarAPISerializer,
                           GoogleCalendarEventToScheduleSerializer)
 
-from external.time_manager import KST
+from external.time_manager import KST, datetime_to_zulu, ensure_datetime
+
 
 # user를 받아서 (is_google_sync 검사.) google_calendar db를 업데이트 하거나 create한다.
 def update_google_calendar(user: User, credential):
@@ -67,7 +69,6 @@ def get_schedules_of_user(user: User, credential, start_datetime: datetime.datet
         events = result.get('items', [])
         # event마다 serialize를 진행한다.
         for event in events:
-            print(event)
             serializer = GoogleCalendarEventToScheduleSerializer(
                 data=event,
                 context={'google_calendar_id': calendar.id}
@@ -79,4 +80,32 @@ def get_schedules_of_user(user: User, credential, start_datetime: datetime.datet
                 print("Invalid event:", serializer.errors)
         
     return events_result
+
+
+# schedule을 google calendar event 형식으로 만듬.
+def schedule_to_google_calendar_event(schedule: Schedule) -> dict:
+    return {
+        'summary': schedule.title,
+        'description': schedule.content,
+        'start': {'dateTime': schedule.start_datetime.isoformat(), 'timeZone': 'Asia/Seoul'},
+        'end': {'dateTime': schedule.end_datetime.isoformat(), 'timeZone': 'Asia/Seoul'},
+        **({'recurrence': [f"RRULE:FREQ={schedule.repeat};{datetime_to_zulu(schedule.until)}"]}
+            if schedule.repeat != "NONE" and schedule.until else {})
+    }
+    
+
+# schedule을 구글 캘린더 primary에 추가하는 함수.
+def post_schedules_of_user(user: User, credential, sched: Schedule):
+    primary_calendar = user.google_calendars.filter(is_primary=True).first()
+
+    service = build("calendar", "v3", credentials=credential)
+    event_dict = schedule_to_google_calendar_event(schedule=sched)
+
+    event = service.events().insert(calendarId=primary_calendar.google_calendar_str_id, body=event_dict).execute()
+    
+    # 구글 관련 데이터 저장.
+    sched.google_event_id = event.get('id')
+    sched.google_calendar = primary_calendar
+
+    sched.save()
 

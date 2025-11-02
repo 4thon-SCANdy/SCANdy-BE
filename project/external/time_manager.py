@@ -32,3 +32,9 @@ def ensure_datetime(value):
             parsed = parsed.replace(tzinfo=KST)
         return parsed
     return value
+
+# zulu time으로 변경하는 함수.
+def datetime_to_zulu(dt) -> str:
+    zulu_str = dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
+
+    return zulu_str
