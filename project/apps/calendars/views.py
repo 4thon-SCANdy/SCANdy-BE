@@ -11,7 +11,7 @@ from apps.users.services import JWTAuthentication
 from external.time_manager import TimeRange, KST, ensure_datetime
 from external.google_manager import get_creds_from_google_token
 
-from apps.google_calendar.services import get_schedules_of_user, post_schedules_of_user
+from apps.google_calendar.services import get_schedules_of_user, post_schedules_of_user, merge_scheds
 
 from .models import Schedule, Tag
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
@@ -71,7 +71,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         if user.is_google_sync:
             creds = get_creds_from_google_token(self.request)
             google_sched_list = get_schedules_of_user(user, creds, start_datetime, end_datetime)
-            db_sched_list.extend(google_sched_list)
+            # 중복되는 것들은 없애야 한다.
+            db_sched_list = merge_scheds(db_sched_list, google_sched_list)
 
         # 2차 필터링. expanded 된 것들도 전부 필터링한다.
         filter_range = TimeRange(

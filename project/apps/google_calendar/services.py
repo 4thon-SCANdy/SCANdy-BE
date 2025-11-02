@@ -5,6 +5,7 @@ from googleapiclient.discovery import build
 from apps.users.models import User
 from apps.calendars.models import Schedule
 
+from .models import GoogleCalendar
 from .serializers import (GoogleCalendarSerializer, GoogleCalendarAPISerializer,
                           GoogleCalendarEventToScheduleSerializer)
 
@@ -89,7 +90,7 @@ def schedule_to_google_calendar_event(schedule: Schedule) -> dict:
         'description': schedule.content,
         'start': {'dateTime': schedule.start_datetime.isoformat(), 'timeZone': 'Asia/Seoul'},
         'end': {'dateTime': schedule.end_datetime.isoformat(), 'timeZone': 'Asia/Seoul'},
-        **({'recurrence': [f"RRULE:FREQ={schedule.repeat};{datetime_to_zulu(schedule.until)}"]}
+        **({'recurrence': [f"RRULE:FREQ={schedule.repeat};UNTIL={datetime_to_zulu(schedule.until)}"]}
             if schedule.repeat != "NONE" and schedule.until else {})
     }
     
@@ -108,4 +109,23 @@ def post_schedules_of_user(user: User, credential, sched: Schedule):
     sched.google_calendar = primary_calendar
 
     sched.save()
+
+# 두개의 list를 합쳐 하나의 list로 만든다.
+def merge_scheds(sched_list: list, google_sched_list: list):
+    sched_list = sched_list or []
+
+    existing_ids = {
+        GoogleCalendar.objects.get(id=sched.get('google_calendar_id')).id
+        for sched in sched_list
+        if sched.get('google_calendar_id')
+    }
+    new_sched_list = sched_list.copy()
+
+    for g_s in google_sched_list:
+        if g_s.get('google_calendar_id') in existing_ids:
+            continue
+        else:
+            new_sched_list.append(g_s)
+
+    return new_sched_list
 
