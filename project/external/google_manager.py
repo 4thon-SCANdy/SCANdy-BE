@@ -2,6 +2,8 @@ from django.conf import settings
 from django.http.request import HttpRequest
 
 from google_auth_oauthlib.flow import InstalledAppFlow
+from google.auth.transport.requests import Request
+from google.oauth2.credentials import Credentials
 
 # Scope.. 구글의 허용범위 지정.
 SCOPES = [
@@ -22,3 +24,22 @@ def get_google_flow(request: HttpRequest) -> InstalledAppFlow:
     scheme = "https" if request.is_secure() else "http"
     flow.redirect_uri = f"{scheme}://{request.get_host()}/{REDIRECT_CALLBACK_PATH}"
     return flow
+
+# google token으로부터 creds를 가져온다.
+# jwt authentication이 끝난걸 가정. 즉 request.user에 user가 있는 상태.
+# is_google_sync에만 호출해야 한다.
+def get_creds_from_google_token(request: HttpRequest) -> Credentials:
+    creds = Credentials(
+        token=request.session.get('google_access_token', None),
+        refresh_token=request.user.google_refresh_token,
+        token_uri="https://oauth2.googleapis.com/token",
+        client_id=settings.GOOGLE_CLIENT_ID,
+        client_secret=settings.GOOGLE_CLIENT_PASSWORD,
+        scopes=SCOPES,
+    )
+    # access token이 없거나 기간이 초기화 되었다면, 새로 refresh한다.
+    if not creds or not creds.valid:
+        creds.refresh(Request())
+
+    return creds
+

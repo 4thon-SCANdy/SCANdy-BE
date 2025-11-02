@@ -29,11 +29,12 @@ def update_google_calendar(user: User, credential):
     google_api_ser.is_valid(raise_exception=True)
     normalized_data = google_api_ser.validated_data
 
-    model_ser = GoogleCalendarSerializer(
-        data=normalized_data,
-        many=True,
-        context={'user': user}
-    )
-
-    model_ser.is_valid(raise_exception=True)
-    model_ser.save(user=user)
+    # error 방지를 위해 분리해서 처리.
+    for norm in normalized_data:
+        model_ser = GoogleCalendarSerializer(
+            data=norm,
+            many=False,
+            context={'user': user}
+        )
+        model_ser.is_valid(raise_exception=True)
+        model_ser.save(user=user)
