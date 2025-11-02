@@ -192,6 +192,15 @@ class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
             until_str = rule_dict.get('UNTIL')
             if until_str:
                 until = dateutil.parser.isoparse(until_str)
+                
+        # color 매핑.
+        colorId = data.get('colorId')
+        # int 타입이면 변환.
+        if colorId and isinstance(colorId, str):
+            if colorId.isdigit():
+                colorId = int(colorId)
+        else:
+            colorId = None
 
         internal = {
             'id': None,
@@ -203,6 +212,7 @@ class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
             'end_datetime': end_dt.isoformat(),
             'repeat': repeat,
             'until': until.isoformat() if until else None,
+            'colorId': colorId if colorId else 0,
         }
         return internal
 
