@@ -1,11 +1,11 @@
 import datetime
 
 from django.utils.dateparse import parse_datetime
+from drf_spectacular.utils import extend_schema
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
-
 
 from apps.users.services import JWTAuthentication
 
@@ -95,7 +95,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
                     # 구글 이벤트 id 저장
                     schedule.google_event_id = event.get("id")
-                    schedule.save()
+                    schedule.save(update_fields=["google_event_id"])
                 except Exception as e:
                     print(f"구글 일정 등록 실패: {e}")
 

@@ -20,7 +20,8 @@ def create_google_event(access_token, calendar_id, schedule):
     }
 
     response = requests.post(url, headers=headers, json=event)
-
+    response.raise_for_status()
+    
     if response.status_code == 200 or response.status_code == 201:
         return response.json()
     else:

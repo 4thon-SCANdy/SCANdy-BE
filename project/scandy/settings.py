@@ -76,13 +76,35 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    # OAS3 Meta정보 API를 비노출 처리한다.
-    'SERVE_INCLUDE_SCHEMA': False,
-}
+    
+    'SERVE_INCLUDE_SCHEMA': False, # OAS3 Meta정보 API를 비노출 처리한다.
+    
+    'COMPONENT_SPLIT_REQUEST': True, # 웹 인터페이스에서 파일 업로드 기능 제공 설정
 
-SPECTACULAR_SETTINGS = {
-    # 웹 인터페이스에서 파일 업로드 기능 제공 설정
-    'COMPONENT_SPLIT_REQUEST': True,
+    # 헤더 관련
+    'SECURITY': [{'Access_Token': []}],
+    'SECURITY_SCHEMES': {
+        'Access_Token': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Access-Token',  # Authorization 대신 Access-Token 사용
+            'description': (
+                "JWT Access Token 입력\n\n"
+                "예시: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`"
+            ),
+        },
+    },
+
+    # Swagger 문서 접근 권한
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+
+    # 기본 cookieAuth, basicAuth 제거
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {},
+    },
+
+    # 자동으로 추가되는 기본 auth 비활성화
+    'APPEND_SECURITY': [],
 }
 
 MIDDLEWARE = [
