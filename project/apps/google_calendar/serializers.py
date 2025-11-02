@@ -1,5 +1,5 @@
 from django.db import transaction, IntegrityError
-
+import dateutil.parser
 from rest_framework import serializers
 from .models import GoogleCalendar
 
@@ -79,3 +79,131 @@ class GoogleCalendarAPISerializer(serializers.Serializer):
             'is_primary': bool(raw.get('primary', False)),
         }
         return normalized
+    # events_result의 예시 JSON
+    '''
+    {
+    "kind": "calendar#event",
+    "etag": "\"3524193503467166\"",
+    "id": "014ddmn24f2ej1hair13qtk4rc",
+    "status": "confirmed",
+    "htmlLink": "https://www.google.com/calendar/event?eid=MDE0ZGRtbjI0ZjJlajFoYWlyMTNxdGs0cmNfMjAyNTExMDQgc2FueW9lbnRlcnRhaW5AbQ",
+    "created": "2025-11-02T15:04:51.000Z",
+    "updated": "2025-11-02T15:19:11.733Z",
+    "summary": "test",
+    "colorId": "8",
+    "creator": {
+        "email": "sanyoentertain@gmail.com",
+        "self": true
+    },
+    "organizer": {
+        "email": "sanyoentertain@gmail.com",
+        "self": true
+    },
+    "start": {
+        "date": "2025-11-04"
+    },
+    "end": {
+        "date": "2025-11-05"
+    },
+    "recurrence": [
+        "RRULE:FREQ=WEEKLY;WKST=SU;UNTIL=20260216;BYDAY=TU"
+    ],
+    "transparency": "transparent",
+    "iCalUID": "014ddmn24f2ej1hair13qtk4rc@google.com",
+    "sequence": 0,
+    "reminders": {
+        "useDefault": false
+    },
+    "eventType": "default"
+    }
+
+'''
+
+
+'''
+{
+  "kind": "calendar#event",
+  "etag": "\"3524195288106494\"",
+  "id": "014ddmn24f2ej1hair13qtk4rc",
+  "status": "confirmed",
+  "htmlLink": "https://www.google.com/calendar/event?eid=MDE0ZGRtbjI0ZjJlajFoYWlyMTNxdGs0cmNfMjAyNTExMDRUMDEwMDAwWiBzYW55b2VudGVydGFpbkBt",
+  "created": "2025-11-02T15:04:51.000Z",
+  "updated": "2025-11-02T15:34:04.053Z",
+  "summary": "test",
+  "colorId": "8",
+  "creator": {
+    "email": "sanyoentertain@gmail.com",
+    "self": true
+  },
+  "organizer": {
+    "email": "sanyoentertain@gmail.com",
+    "self": true
+  },
+  "start": {
+    "dateTime": "2025-11-04T10:00:00+09:00",
+    "timeZone": "Asia/Seoul"
+  },
+  "end": {
+    "dateTime": "2025-11-04T11:00:00+09:00",
+    "timeZone": "Asia/Seoul"
+  },
+  "recurrence": [
+    "RRULE:FREQ=WEEKLY;WKST=SU;UNTIL=20260216T145959Z;BYDAY=TU"
+  ],
+  "transparency": "transparent",
+  "iCalUID": "014ddmn24f2ej1hair13qtk4rc@google.com",
+  "sequence": 1,
+  "reminders": {
+    "useDefault": false,
+    "overrides": [
+      {
+        "method": "popup",
+        "minutes": 10
+      }
+    ]
+  },
+  "eventType": "default"
+}
+
+'''
+# google calendar event에 나온 json을 event의 json 형태로 변환하는 Serializer
+class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
+    def to_internal_value(self, data):
+        # context에서 google_calendar_id 가져오기
+        google_calendar_id = self.context.get('google_calendar_id')
+        if google_calendar_id is None:
+            raise serializers.ValidationError("google_calendar_id is required in context.")
+
+        # start_datetime, end_datetime 처리
+        start_raw = data['start'].get('dateTime') or data['start'].get('date')
+        end_raw = data['end'].get('dateTime') or data['end'].get('date')
+        start_dt = dateutil.parser.isoparse(start_raw)
+        end_dt = dateutil.parser.isoparse(end_raw)
+
+        # recurrence에서 repeat, until 처리
+        recurrence = data.get('recurrence', [])
+        repeat = 'NONE'
+        until = None
+        if recurrence:
+            rule = recurrence[0]  # 예: "RRULE:FREQ=WEEKLY;WKST=SU;UNTIL=20260216T145959Z;BYDAY=TU"
+            parts = rule.replace('RRULE:', '').split(';')
+            rule_dict = {p.split('=')[0]: p.split('=')[1] for p in parts if '=' in p}
+            repeat = rule_dict.get('FREQ', 'NONE')
+            until_str = rule_dict.get('UNTIL')
+            if until_str:
+                until = dateutil.parser.isoparse(until_str)
+
+        internal = {
+            'id': None,
+            'google_calendar_id': google_calendar_id,
+            'google_event_id': data['id'],
+            'title': data.get('summary', ''),
+            'content': data.get('description', ''),
+            'start_datetime': start_dt.isoformat(),
+            'end_datetime': end_dt.isoformat(),
+            'repeat': repeat,
+            'until': until.isoformat() if until else None,
+        }
+        return internal
+
+

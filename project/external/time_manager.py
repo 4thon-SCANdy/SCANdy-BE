@@ -1,4 +1,9 @@
 import datetime
+from datetime import timezone, timedelta
+from django.utils.dateparse import parse_datetime
+
+# 한국 timezone 설정.
+KST = timezone(timedelta(hours=9))
 
 # 시간 범위를 나타내는 클래스.
 class TimeRange:
@@ -19,3 +24,11 @@ class TimeRange:
         # other의 start가 이 클래스의 start보다 이후이면, other의 start가 이 클래스의 end보다 이전인지 확인.
         else:
             return other.start <= self.end
+
+def ensure_datetime(value):
+    if isinstance(value, str):
+        parsed = parse_datetime(value)
+        if parsed.tzinfo is None:
+            parsed = parsed.replace(tzinfo=KST)
+        return parsed
+    return value
