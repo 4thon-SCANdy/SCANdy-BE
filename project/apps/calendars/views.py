@@ -16,6 +16,7 @@ from .models import Schedule, Tag
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
 from .services import expand_repeating_schedule
+from .google_calendar import create_google_event
 
 class ScheduleViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -79,8 +80,23 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             schedule = serializer.save()
             # Serializer에 구글 연동 관련 데이터를 추가해야 함.
+
+            user = request.user
+            if getattr(user, "is_google_sync", False) and getattr(user, "google_refresh_token", None):
+                try:
+                    # event = create_google_event(schedule=schedule)
+        
+                    # 구글 이벤트 id 저장
+                    # schedule.google_event_id = event.get("id")
+                    schedule.save()
+                except Exception as e:
+                    print(f"구글 일정 등록 실패: {e}")
+
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        
+
     
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
