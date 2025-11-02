@@ -13,6 +13,7 @@ from apps.users.services import JWTAuthentication
 from external.time_manager import TimeRange
 
 from .models import Schedule, Tag
+
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
 from .services import expand_repeating_schedule
@@ -73,13 +74,14 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
         
         return Response(expanded_scheds, status=status.HTTP_200_OK)
-        
+
+    #########################################################################################################################################
+    # 일정 생성     
     def create(self, request, *args, **kwargs):
         serializer = ScheduleCreateSerializer(data=request.data, context={'request': request})
         
         if serializer.is_valid():
             schedule = serializer.save()
-            # Serializer에 구글 연동 관련 데이터를 추가해야 함.
 
             user = request.user
             access_token = request.session.get("google_access_token", None)
@@ -102,9 +104,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        
 
-    
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
         
