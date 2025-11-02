@@ -25,4 +25,10 @@ class GoogleCalendar(models.Model):
     # user와 google_calendar_str_id의 조합을 unique로 설정.
     class Meta:
         unique_together = ('user', 'google_calendar_str_id')
-    
+        constraints = [
+            models.UniqueConstraint(
+                fields=['user'],
+                condition=models.Q(is_primary=True),
+                name='unique_primary_calendar_per_user'
+            )
+        ]
