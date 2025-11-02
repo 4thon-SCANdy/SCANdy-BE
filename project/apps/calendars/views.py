@@ -82,12 +82,19 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             # Serializer에 구글 연동 관련 데이터를 추가해야 함.
 
             user = request.user
-            if getattr(user, "is_google_sync", False) and getattr(user, "google_refresh_token", None):
+            access_token = request.session.get("google_access_token", None)
+
+            # 유저가 구글 연동 중이고, 엑세스 토큰이 있다면
+            if getattr(user, "is_google_sync", True) and access_token:
                 try:
-                    # event = create_google_event(schedule=schedule)
+                    event = create_google_event(
+                        access_token=access_token,
+                        calendar_id="primary",
+                        schedule=schedule
+                    )
         
                     # 구글 이벤트 id 저장
-                    # schedule.google_event_id = event.get("id")
+                    schedule.google_event_id = event.get("id")
                     schedule.save()
                 except Exception as e:
                     print(f"구글 일정 등록 실패: {e}")
