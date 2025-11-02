@@ -40,6 +40,7 @@ def get_creds_from_google_token(request: HttpRequest) -> Credentials:
     # access token이 없거나 기간이 초기화 되었다면, 새로 refresh한다.
     if not creds or not creds.valid:
         creds.refresh(Request())
+        request.session['google_access_token'] = creds.token
 
     return creds
 
