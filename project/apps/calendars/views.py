@@ -11,7 +11,7 @@ from apps.users.services import JWTAuthentication
 from external.time_manager import TimeRange, KST, ensure_datetime
 from external.google_manager import get_creds_from_google_token
 
-from apps.google_calendar.services import get_schedules_of_user, post_schedules_of_user, merge_scheds
+from apps.google_calendar.services import get_schedules_of_user, post_or_update_schedule_of_user, merge_scheds, delete_from_schedule
 
 from .models import Schedule, Tag
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
@@ -92,7 +92,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             # Serializer에 구글 연동 관련 데이터를 추가해야 함.
             if request.user.is_google_sync:
                 creds = get_creds_from_google_token(request)
-                post_schedules_of_user(request.user, creds, schedule)
+                post_or_update_schedule_of_user(request.user, creds, schedule)
 
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -108,8 +108,20 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
         if serializer.is_valid():
             schedule = serializer.save()
+            if request.user.is_google_sync:
+                creds = get_creds_from_google_token(request)
+                post_or_update_schedule_of_user(request.user, creds, schedule)
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    def destroy(self, request, *args, **kwargs):
+        schedule = self.get_object()
+        if request.user.is_google_sync:
+           # 삭제할때 google calendar의 데이터도 삭제해야 함.
+           creds = get_creds_from_google_token(request)
+           delete_from_schedule(creds, schedule)
+
+        return super().destroy(request, *args, **kwargs)
         
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.

@@ -1,5 +1,6 @@
 import datetime
 
+import googleapiclient
 from googleapiclient.discovery import build
 
 from apps.users.models import User
@@ -96,19 +97,60 @@ def schedule_to_google_calendar_event(schedule: Schedule) -> dict:
     
 
 # schedule을 구글 캘린더 primary에 추가하는 함수.
-def post_schedules_of_user(user: User, credential, sched: Schedule):
+def post_or_update_schedule_of_user(user: User, credential, sched: Schedule):
     primary_calendar = user.google_calendars.filter(is_primary=True).first()
-
     service = build("calendar", "v3", credentials=credential)
     event_dict = schedule_to_google_calendar_event(schedule=sched)
 
-    event = service.events().insert(calendarId=primary_calendar.google_calendar_str_id, body=event_dict).execute()
-    
-    # 구글 관련 데이터 저장.
+    # 이미 구글 이벤트 ID가 있는 경우 update
+    if sched.google_calendar and sched.google_event_id:
+        try:
+            event = service.events().get(
+                calendarId=sched.google_calendar.google_calendar_str_id,
+                eventId=sched.google_event_id
+            ).execute()
+
+            # 기존 이벤트 업데이트
+            event = service.events().update(
+                calendarId=sched.google_calendar.google_calendar_str_id,
+                eventId=sched.google_event_id,
+                body=event_dict
+            ).execute()
+        except googleapiclient.errors.HttpError as e:
+            # 이벤트가 없는 경우 insert
+            if e.resp.status == 404:
+                event = service.events().insert(
+                    calendarId=primary_calendar.google_calendar_str_id,
+                    body=event_dict
+                ).execute()
+            else:
+                raise
+    else:
+        # 새로 삽입
+        event = service.events().insert(
+            calendarId=primary_calendar.google_calendar_str_id,
+            body=event_dict
+        ).execute()
+
+    # 구글 관련 데이터 저장
     sched.google_event_id = event.get('id')
     sched.google_calendar = primary_calendar
-
     sched.save()
+
+def delete_from_schedule(credential, schedule: Schedule):
+    if not schedule.google_calendar or not schedule.google_event_id:
+        return
+
+    service = build("calendar", "v3", credentials=credential)
+
+    try:
+        service.events().delete(
+            calendarId=schedule.google_calendar.google_calendar_str_id,
+            eventId=schedule.google_event_id
+        ).execute()
+    except googleapiclient.errors.HttpError as e:
+        if e.resp.status != 404:
+            raise
 
 # 두개의 list를 합쳐 하나의 list로 만든다.
 def merge_scheds(sched_list: list, google_sched_list: list):
