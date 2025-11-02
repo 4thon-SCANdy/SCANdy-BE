@@ -11,7 +11,10 @@ class GoogleCalendar(models.Model):
         db_column='user_id'
     )
     # google_calendar의 실제 id 값.
-    google_calendar_str_id = models.CharField(max_length=255, null=False)
+    google_calendar_str_id = models.CharField(max_length=255, null=False, unique=True)
+
+    # google_calendar의 summary 값.
+    summary = models.CharField(max_length=255, null=False)
 
     # is_activated 사용자가 활성화 했는지 여부.
     is_activated = models.BooleanField(null=False, default=True)
