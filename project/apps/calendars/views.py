@@ -90,8 +90,9 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             schedule = serializer.save()
             # Serializer에 구글 연동 관련 데이터를 추가해야 함.
-            creds = get_creds_from_google_token(request)
-            post_schedules_of_user(request.user, creds, schedule)
+            if request.user.is_google_sync:
+                creds = get_creds_from_google_token(request)
+                post_schedules_of_user(request.user, creds, schedule)
 
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
