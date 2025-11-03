@@ -9,16 +9,7 @@ class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
         fields = '__all__'
-
-    # timezone을 바꿈.
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        for field in ['start_datetime', 'end_datetime', 'until']:
-            if ret.get(field):
-                dt = parse_datetime(ret[field])
-                if dt is not None:
-                    ret[field] = dt.replace(tzinfo=KST)
-        return ret  
+        
 
 class ScheduleCreateSerializer(serializers.ModelSerializer):    
     class Meta:

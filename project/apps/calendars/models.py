@@ -74,16 +74,6 @@ class Schedule(models.Model):
     repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=False, blank=False, default="NONE")
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
-    
-    def save(self, *args, **kwargs):
-        # start_datetime, end_datetime, until을 timezone-aware로 만들기
-        # 한국 시간으로 변경.
-        if self.start_datetime.tzinfo is None:
-            self.start_datetime = self.start_datetime.replace(tzinfo=KST)
-        if self.end_datetime.tzinfo is None:
-            self.end_datetime = self.end_datetime.replace(tzinfo=KST)
-        if self.until.tzinfo is None:
-            self.until = self.until.replace(tzinfo=KST)
-            
-        super().save(*args, **kwargs)
+    locate = models.TextField(null=True, blank=True)
+
         

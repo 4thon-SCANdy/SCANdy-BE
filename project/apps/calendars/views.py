@@ -1,22 +1,25 @@
 
 from django.db.models import Q
-from django.utils.dateparse import parse_datetime
+from drf_spectacular.utils import extend_schema
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 
 from apps.users.services import JWTAuthentication
 
 # 직접 작성한 class import하기.
-from external.time_manager import TimeRange, KST, ensure_datetime
+from external.time_manager import TimeRange, KST, ensure_datetime, to_naive_kst
 from external.google_manager import get_creds_from_google_token
 
 from apps.google_calendar.services import get_schedules_of_user, post_or_update_schedule_of_user, merge_scheds, delete_from_schedule
 
 from .models import Schedule, Tag
+
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
 from .services import expand_repeating_schedule
+from .google_calendar import create_google_event
 
 class ScheduleViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -38,7 +41,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         start_datetime = request.query_params.get('start_datetime', None)
         end_datetime = request.query_params.get('end_datetime', None)
         tag = request.query_params.get('tag', None)
-        
+
         # 먼저 db query로 모두 필터링이 가능한 tag부터 필터링 한다.
         # 태그 필터링.
         if tag:
@@ -49,6 +52,13 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             serializer = ScheduleSerializer(queryset, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
+        print(start_datetime)
+        print(type(start_datetime))
+        print(ensure_datetime(start_datetime))
+
+        # datetime 들을 timezone-naive로 만들기.
+        start_datetime = to_naive_kst(ensure_datetime(start_datetime)).isoformat()
+        end_datetime = to_naive_kst(ensure_datetime(end_datetime)).isoformat()
         
         # db 1차 날짜 필터링. db에서 범위 1차 필터링(성능을 위해.)
         # until이 없는 경우에는 그냥 집어넣음.
@@ -57,8 +67,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         ).filter(Q(until__gte=start_datetime) | Q(until__isnull=True))
 
         # datetime으로 파싱.
-        start_datetime = parse_datetime(start_datetime).replace(tzinfo=KST)
-        end_datetime = parse_datetime(end_datetime).replace(tzinfo=KST)
+        start_datetime = ensure_datetime(start_datetime)
+        end_datetime = ensure_datetime(end_datetime)
            
         serializer = ScheduleSerializer(queryset, many=True)
         
@@ -83,7 +93,9 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         expanded_scheds: list = expand_repeating_schedule(db_sched_list, filter_range)
         
         return Response(expanded_scheds, status=status.HTTP_200_OK)
-        
+
+    #########################################################################################################################################
+    # 일정 생성     
     def create(self, request, *args, **kwargs):
         serializer = ScheduleCreateSerializer(data=request.data, context={'request': request})
         
@@ -96,7 +108,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
         
@@ -122,6 +135,23 @@ class ScheduleViewSet(viewsets.ModelViewSet):
            delete_from_schedule(creds, schedule)
 
         return super().destroy(request, *args, **kwargs)
+
+    @action(detail=False, methods=["GET"])
+    # 태그명을 받아, 태그명에 해당하는 일정만 보여주기
+    def filter(self, request):
+        tag_name = request.query_params.get("tag")
+        
+        if not tag_name:
+            return Response(
+                {"error": "tag가 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Tag 모델의 name 기준으로 필터링
+        tag_schedules = Schedule.objects.filter(tags__name=tag_name)
+
+        serializer = self.get_serializer(tag_schedules, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
         
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -158,4 +188,6 @@ class TagViewSet(viewsets.ModelViewSet):
             tag = serializer.save()
             return Response(TagSerializer(tag).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 

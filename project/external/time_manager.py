@@ -27,9 +27,8 @@ class TimeRange:
 
 def ensure_datetime(value):
     if isinstance(value, str):
+        value = value.replace(" ", "+")
         parsed = parse_datetime(value)
-        if parsed.tzinfo is None:
-            parsed = parsed.replace(tzinfo=KST)
         return parsed
     return value
 
@@ -38,3 +37,11 @@ def datetime_to_zulu(dt) -> str:
     zulu_str = dt.astimezone(timezone.utc).strftime("%Y%m%dT%H%M%SZ")
 
     return zulu_str
+
+# timezone을 kst 기준으로 없앰.
+def to_naive_kst(dt):
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        return dt  # 이미 naive면 그대로
+    return dt.astimezone(KST).replace(tzinfo=None)

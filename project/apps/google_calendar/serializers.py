@@ -6,6 +6,8 @@ from .models import GoogleCalendar
 
 from apps.calendars.models import Schedule
 
+from external.time_manager import to_naive_kst
+
 
 class GoogleCalendarSerializer(serializers.ModelSerializer):
     class Meta:
@@ -126,10 +128,10 @@ class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
             'google_event_id': data['id'],
             'title': data.get('summary', ''),
             'content': data.get('description', ''),
-            'start_datetime': start_dt.isoformat(),
-            'end_datetime': end_dt.isoformat(),
+            'start_datetime': to_naive_kst(start_dt).isoformat(),
+            'end_datetime': to_naive_kst(end_dt).isoformat(),
             'repeat': repeat,
-            'until': until.isoformat() if until else None,
+            'until': to_naive_kst(until).isoformat() if until else None,
             'colorId': colorId if colorId else 0,
         }
         return internal
