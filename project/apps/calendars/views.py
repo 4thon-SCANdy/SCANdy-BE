@@ -52,10 +52,6 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             serializer = ScheduleSerializer(queryset, many=True)
             return Response(serializer.data, status=status.HTTP_200_OK)
 
-        print(start_datetime)
-        print(type(start_datetime))
-        print(ensure_datetime(start_datetime))
-
         # datetime 들을 timezone-naive로 만들기.
         start_datetime = to_naive_kst(ensure_datetime(start_datetime)).isoformat()
         end_datetime = to_naive_kst(ensure_datetime(end_datetime)).isoformat()
