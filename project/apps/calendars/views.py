@@ -1,9 +1,11 @@
 import datetime
 
 from django.utils.dateparse import parse_datetime
+from drf_spectacular.utils import extend_schema
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
 
 from apps.users.services import JWTAuthentication
 
@@ -11,9 +13,11 @@ from apps.users.services import JWTAuthentication
 from external.time_manager import TimeRange
 
 from .models import Schedule, Tag
+
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
 from .services import expand_repeating_schedule
+from .google_calendar import create_google_event
 
 class ScheduleViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -70,16 +74,37 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
         
         return Response(expanded_scheds, status=status.HTTP_200_OK)
-        
+
+    #########################################################################################################################################
+    # 일정 생성     
     def create(self, request, *args, **kwargs):
         serializer = ScheduleCreateSerializer(data=request.data, context={'request': request})
         
         if serializer.is_valid():
             schedule = serializer.save()
-            # Serializer에 구글 연동 관련 데이터를 추가해야 함.
+
+            user = request.user
+            access_token = request.session.get("google_access_token", None)
+
+            # 유저가 구글 연동 중이고, 엑세스 토큰이 있다면
+            if getattr(user, "is_google_sync", True) and access_token:
+                try:
+                    event = create_google_event(
+                        access_token=access_token,
+                        calendar_id="primary",
+                        schedule=schedule
+                    )
+        
+                    # 구글 이벤트 id 저장
+                    schedule.google_event_id = event.get("id")
+                    schedule.save(update_fields=["google_event_id"])
+                except Exception as e:
+                    print(f"구글 일정 등록 실패: {e}")
+
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-    
+
+
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
         
@@ -93,6 +118,23 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             schedule = serializer.save()
             return Response(ScheduleSerializer(schedule).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    @action(detail=False, methods=["GET"])
+    # 태그명을 받아, 태그명에 해당하는 일정만 보여주기
+    def filter(self, request):
+        tag_name = request.query_params.get("tag")
+        
+        if not tag_name:
+            return Response(
+                {"error": "tag가 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Tag 모델의 name 기준으로 필터링
+        tag_schedules = Schedule.objects.filter(tags__name=tag_name)
+
+        serializer = self.get_serializer(tag_schedules, many=True)
+        return Response(serializer.data, status=status.HTTP_200_OK)
         
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -129,4 +171,6 @@ class TagViewSet(viewsets.ModelViewSet):
             tag = serializer.save()
             return Response(TagSerializer(tag).data, status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+    
+    
 
