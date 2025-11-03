@@ -68,6 +68,7 @@ INSTALLED_APPS = [
     'apps.tasks',
     'apps.calendars',
     'apps.session_tokens',
+    'apps.google_calendar',
 ]
 
 REST_FRAMEWORK = {

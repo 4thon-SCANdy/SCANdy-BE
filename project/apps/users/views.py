@@ -17,9 +17,12 @@ from google.auth.transport import requests as google_request
 
 # externals
 from apps.session_tokens.services import get_user_from_non_google_token
+from apps.google_calendar.services import update_google_calendar
+
+from external.google_manager import get_google_flow
 
 from .models import User
-from .services import get_google_flow, create_jwt_token, get_user_from_token
+from .services import create_jwt_token, get_user_from_token
 from .serializers import UserSerializer
 
 @api_view(['GET'])
@@ -77,7 +80,6 @@ def google_oauth_callback(request: HttpRequest):
     
     try:
         user: User = get_user_from_non_google_token(request)
-        print(user)
         
         # 만약 이미 user가 있고, is_google_sync가 아니라면 새로 구글 연동 user로 업데이트함.
         if user and not user.is_google_sync:
@@ -107,13 +109,14 @@ def google_oauth_callback(request: HttpRequest):
         else:
             user = None
     except Exception as e:
-        print("Exception in get_user_from_non_google_token block:", e)
-        import traceback
-        traceback.print_exc()  # 전체 트레이스백 출력
         user = None
     
     if not user:
         user = User.get_or_create_google_user(id_info, refresh_token)
+
+    if user:
+        # user calendar를 업데이트 한다.
+        update_google_calendar(user, creds)
 
     # 세션에 로그인 상태 저장, jwt 토큰 발급.
     jwt_token = create_jwt_token(user)

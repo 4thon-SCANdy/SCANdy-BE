@@ -1,17 +1,22 @@
 from .models import Schedule, Tag
 from rest_framework import serializers
 
+from django.utils.dateparse import parse_datetime
+
+from external.time_manager import KST
+
 class ScheduleSerializer(serializers.ModelSerializer):
     class Meta:
         model = Schedule
         fields = '__all__'
+        
 
 class ScheduleCreateSerializer(serializers.ModelSerializer):    
     class Meta:
         model = Schedule
         exclude = ('id', 'calendar', 'created_at', 'updated_at')
         extra_kwargs = {
-                'until': {'required': False}
+            'until': {'required': False}
         }
         
     def create(self, validated_data):
@@ -61,3 +66,4 @@ class TagUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
         return instance
+    
