@@ -70,7 +70,7 @@ class Schedule(models.Model):
 
     until = models.DateTimeField(null=True)
 
-    all_day = models.BooleanField(null=True, default=False)
+    all_day = models.BooleanField(null=False, default=False)
     repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=False, blank=False, default="NONE")
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
