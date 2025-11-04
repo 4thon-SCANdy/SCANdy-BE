@@ -36,14 +36,27 @@ class TagUpdateSerializer(serializers.ModelSerializer):
     
 
 class ScheduleSerializer(serializers.ModelSerializer):
+    tag = TagSerializer(required=False)
     class Meta:
         model = Schedule
         fields = '__all__'
         
 
-class ScheduleCreateSerializer(serializers.ModelSerializer): 
+    # 공통 태그 처리 로직
+    def _handle_tag(self, schedule, tag_data, calendar):
+        if not tag_data:
+            return
+        tag_obj, _ = Tag.objects.get_or_create(
+            calendar=calendar,
+            name=tag_data.get("name"),
+            defaults={"color": tag_data.get("color", 0)},
+        )
+        schedule.tag = tag_obj
+        schedule.save()
+        
 
-    tag = TagSerializer(required=False)   
+class ScheduleCreateSerializer(ScheduleSerializer): 
+
     class Meta:
         model = Schedule
         exclude = ('id', 'calendar', 'created_at', 'updated_at')
@@ -59,25 +72,20 @@ class ScheduleCreateSerializer(serializers.ModelSerializer):
             **validated_data
         )
 
-        if tag_data:
-            tag_obj, created = Tag.objects.get_or_create(
-                calendar=user.calendar,
-                name=tag_data,
-                defaults={"color": tag_data.get("color", 0)},
-            )
-            schedule.tag = tag_obj
-            schedule.save()
-
+        self._handle_tag(schedule, tag_data, user.calendar)
         return schedule
     
-class ScheduleUpdateSerializer(serializers.ModelSerializer):
+class ScheduleUpdateSerializer(ScheduleSerializer):
     class Meta:
         model = Schedule
         exclude = ('id', 'calendar', 'created_at', 'updated_at')
 
-    def update(self, instance, validated_data):        
+    def update(self, instance, validated_data):  
+        tag_data = validated_data.pop("tag", None)      
         for attr, value in validated_data.items():
             setattr(instance, attr, value)
+
+        self._handle_tag(instance, tag_data, instance.calendar)
         instance.save()
         return instance
 

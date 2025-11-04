@@ -102,7 +102,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # 스케쥴 분리와 동시에 필터링도 수행한다.
         expanded_scheds: list = expand_repeating_schedule(db_sched_list, filter_range)
         
-        return Response(expanded_scheds, status=status.HTTP_200_OK)
+        return Response({"detail": "일정 조회에 성공했습니다.", "data": expanded_scheds}, status=status.HTTP_200_OK)
 
     #########################################################################################################################################
     # 일정 생성     
@@ -116,8 +116,10 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 creds = get_creds_from_google_token(request)
                 post_or_update_schedule_of_user(request.user, creds, schedule)
 
-            return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "일정 등록을 성공했습니다.", "data": ScheduleSerializer(schedule).data}, 
+                            status=status.HTTP_201_CREATED)
+        return Response({"detail": "일정 등록을 실패했습니다.", "error":serializer.errors}, 
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
     def update(self, request, *args, **kwargs):
@@ -134,8 +136,10 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             if request.user.is_google_sync:
                 creds = get_creds_from_google_token(request)
                 post_or_update_schedule_of_user(request.user, creds, schedule)
-            return Response(ScheduleSerializer(schedule).data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "일정 수정을 성공했습니다.", "data": ScheduleSerializer(schedule).data}, 
+                            status=status.HTTP_200_OK)
+        return Response({"detail": "일정 수정을 실패했습니다.", "error":serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, *args, **kwargs):
         try:
