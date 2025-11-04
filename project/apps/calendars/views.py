@@ -1,6 +1,6 @@
 
 from django.db.models import Q
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
@@ -36,6 +36,15 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     # 또한 태그 필터링도 지원하여야 한다. tag로 파라미터를 받는다.
     # 없는 경우 그냥 get_queryset을 받는다. (user의 모든 일정)
     
+    @extend_schema(
+        summary="일정 목록 조회 (날짜/태그 필터링)",
+        parameters=[
+            OpenApiParameter(name="start_datetime", description="조회 시작 날짜 (예: 2025-11-01T00:00:00)", required=False),
+            OpenApiParameter(name="end_datetime", description="조회 종료 날짜 (예: 2025-11-30T23:59:59)", required=False),
+            OpenApiParameter(name="tag", description="태그 ID (예: 3)", required=False),
+        ],
+        responses={200: ScheduleSerializer(many=True)},
+    )
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         
@@ -129,13 +138,25 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, *args, **kwargs):
-        schedule = self.get_object()
-        if request.user.is_google_sync:
-           # 삭제할때 google calendar의 데이터도 삭제해야 함.
-           creds = get_creds_from_google_token(request)
-           delete_from_schedule(creds, schedule)
-
-        return super().destroy(request, *args, **kwargs)
+        try:
+            schedule = self.get_object()
+            if request.user.is_google_sync:
+                # 삭제할때 google calendar의 데이터도 삭제해야 함.
+                creds = get_creds_from_google_token(request)
+                delete_from_schedule(creds, schedule)
+            
+            # super().destroy(request, *args, **kwargs)
+            schedule.delete()
+            return Response(
+                {"detail": f"'{schedule.title}' 일정이 삭제되었습니다."},
+                status=status.HTTP_200_OK
+            )
+        
+        except Exception as e:
+            return Response(
+                {"error": f"삭제 중 오류가 발생했습니다: {str(e)}"},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
     @action(detail=False, methods=["GET"])
     # 태그명을 받아, 태그명에 해당하는 일정만 보여주기
