@@ -212,6 +212,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 브라우저를 닫아도 세션 유�
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
 
+# 프록시 가져오기.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # FRONT_ORIGIN = env.str("FRONT_ORIGIN").rstrip("/")
 
 # Default primary key field type
