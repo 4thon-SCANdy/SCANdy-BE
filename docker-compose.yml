@@ -1,0 +1,32 @@
+version: "3.9"
+
+services:
+  scandy:
+    container_name: scandy
+    image: poatansanyo/scandy:1.0.0
+    build:
+      context: ./project
+    ports:
+      - "8000:8000"
+    volumes:
+      - ./project/media:/app/media
+      - ./project/static:/app/static
+      - ./project/db:/app/db
+    command: >
+      sh -c "
+            python manage.py makemigrations &&
+            python manage.py migrate &&
+            python manage.py collectstatic --noinput &&
+            gunicorn scandy.wsgi:application --bind 0.0.0.0:8000
+          "
+  nginx:
+    container_name: scandy_nginx
+    image: poatansanyo/scandy_nginx:1.0.0
+    build:
+      context: ./nginx
+    ports:
+      - "80:80"
+    volumes:
+      - ./project/media:/media
+      - ./project/static:/static
+    

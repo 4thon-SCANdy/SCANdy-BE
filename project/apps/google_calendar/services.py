@@ -71,7 +71,6 @@ def get_schedules_of_user(user: User, credential, start_datetime: datetime.datet
         events = result.get('items', [])
         # event마다 serialize를 진행한다.
         for event in events:
-            print(event)
             serializer = GoogleCalendarEventToScheduleSerializer(
                 data=event,
                 context={'google_calendar_id': calendar.id}
