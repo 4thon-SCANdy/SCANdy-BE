@@ -11,7 +11,9 @@ class ScheduleSerializer(serializers.ModelSerializer):
         fields = '__all__'
         
 
-class ScheduleCreateSerializer(serializers.ModelSerializer):    
+class ScheduleCreateSerializer(serializers.ModelSerializer): 
+
+    tag = serializers.CharField(required=False)   
     class Meta:
         model = Schedule
         exclude = ('id', 'calendar', 'created_at', 'updated_at')
@@ -21,10 +23,21 @@ class ScheduleCreateSerializer(serializers.ModelSerializer):
         
     def create(self, validated_data):
         user = self.context['request'].user
+        tag_name = validated_data.pop("tag", None)
         schedule = Schedule.objects.create(
             calendar=user.calendar,
             **validated_data
         )
+
+        if tag_name:
+            tag_obj, created = Tag.objects.get_or_create(
+                calendar=user.calendar,
+                name=tag_name,
+                defaults={"color": 0}
+            )
+            schedule.tag = tag_obj
+            schedule.save()
+
         return schedule
     
 class ScheduleUpdateSerializer(serializers.ModelSerializer):

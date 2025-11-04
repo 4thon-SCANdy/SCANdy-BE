@@ -35,6 +35,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     # list의 경우 파라미터에 start_datetime, end_datetime이 있다면 그걸로 필터링 해야 한다.
     # 또한 태그 필터링도 지원하여야 한다. tag로 파라미터를 받는다.
     # 없는 경우 그냥 get_queryset을 받는다. (user의 모든 일정)
+    
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         
