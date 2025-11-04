@@ -19,7 +19,6 @@ from .models import Schedule, Tag
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
 from .services import expand_repeating_schedule
-from .google_calendar import create_google_event
 
 class ScheduleViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -161,24 +160,66 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 {"error": f"삭제 중 오류가 발생했습니다: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-    @action(detail=False, methods=["GET"])
-    # 태그명을 받아, 태그명에 해당하는 일정만 보여주기
-    def filter(self, request):
-        tag_name = request.query_params.get("tag")
         
-        if not tag_name:
+    @extend_schema(
+        summary="일정 검색",
+        parameters=[OpenApiParameter(name="keyword", description="검색어", required=True)]
+    )   
+    @action(detail=False, methods=["GET"])
+    # title, content, tag 값을 구글, DB에서 검색하여 필터링
+    def search(self, request):
+        user = request.user
+        keyword = request.query_params.get("keyword", "").strip()
+        
+        if not keyword:
             return Response(
-                {"error": "tag가 필요합니다."},
+                {"error": "검색어가 필요합니다."},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        # Tag 모델의 name 기준으로 필터링
-        tag_schedules = Schedule.objects.filter(tags__name=tag_name)
-
-        serializer = self.get_serializer(tag_schedules, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
         
+        queryset = self.get_queryset()
+
+        # queryset = self.get_queryset().filter(calendar__user=user)
+        print(f"📊 초기 일정 개수: {queryset.count()}")
+        print("📋 DB 데이터 샘플:", list(queryset.values("id", "title", "content", "tag__name")[:5]))
+
+        
+        # db 검색
+        db_results = queryset.filter(
+            Q(title__icontains=keyword)
+            | Q(content__icontains=keyword)
+            | Q(tag__name__icontains=keyword)
+        ).distinct()
+
+        print(f"📈 필터링된 결과 수: {db_results.count()}")
+        print("📂 결과 샘플:", list(db_results.values("id", "title", "tag__name")))
+
+        db_serialized = ScheduleSerializer(db_results, many=True).data
+
+        # 구글 연동시, 구글 검색
+        google_results = []
+        if user.is_google_sync:
+            creds = get_creds_from_google_token(request)
+            google_schedules = get_schedules_of_user(user, creds)
+            
+            # 구글 일정 필터링
+            google_results = [
+                event for event in google_schedules
+                if keyword.lower() in event.get("summary", "").lower()
+                or keyword.lower() in event.get("description", "").lower()
+            ]
+
+        # 병합 및 중복 제거
+        merged_results = merge_scheds(db_serialized, google_results)
+        
+        return Response(
+            {
+                "detail": f"'{keyword}' 검색 결과입니다.",
+                "count": len(merged_results),
+                "data": merged_results
+            },
+            status=status.HTTP_200_OK
+        )
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]
