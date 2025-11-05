@@ -1,0 +1,15 @@
+.git
+.gitignore
+
+.docker
+
+/venv
+/.venv
+__pycache__/
+db.sqlite3
+
+.idea
+
+staticfiles/
+media/
+db/
