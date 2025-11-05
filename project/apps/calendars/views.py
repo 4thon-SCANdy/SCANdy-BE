@@ -174,11 +174,6 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             )
         
         queryset = self.get_queryset()
-
-        # queryset = self.get_queryset().filter(calendar__user=user)
-        print(f"📊 초기 일정 개수: {queryset.count()}")
-        print("📋 DB 데이터 샘플:", list(queryset.values("id", "title", "content", "tag__name")[:5]))
-
         
         # db 검색
         db_results = queryset.filter(
@@ -186,9 +181,6 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             | Q(content__icontains=keyword)
             | Q(tag__name__icontains=keyword)
         ).distinct()
-
-        print(f"📈 필터링된 결과 수: {db_results.count()}")
-        print("📂 결과 샘플:", list(db_results.values("id", "title", "tag__name")))
 
         db_serialized = ScheduleSerializer(db_results, many=True).data
 
