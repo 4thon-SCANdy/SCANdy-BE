@@ -165,7 +165,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     # title, content, tag 값을 구글, DB에서 검색하여 필터링
     def search(self, request):
         user = request.user
-        keyword = request.query_params.get("keyword", "").strip()
+        keyword = request.query_params.get("q", "").strip()
         
         if not keyword:
             return Response(
