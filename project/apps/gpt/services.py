@@ -77,7 +77,8 @@ def create_schedule(input_text: str, model: str = "gpt-4o-mini"):
     "'NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'."
     "모든 날짜와 시간은 ISO 8601 형식(YYYY-MM-DDTHH:MM:SS)으로 작성하고, "
     "사용자가 시간을 명시하지 않은 경우 all_day 값을 true로 설정해."
-    "추출할 수 없는 값은 절대 만들어내지말고 null을 반환해줘"
+    "start_datetime은 있는데, end_datetime 값은 추출할 수 없다면 start_datetime으로부터 1시간 뒤로 설정해줘"
+    "위 datetime 항목 외에는 추출할 수 없는 값은 절대 만들어내지말고 null을 반환해줘"
     "출력은 반드시 JSON만 반환해야 하며, 예시는 다음과 같아:"
     "{"
     '  "title": "팀 회의",'
@@ -118,3 +119,4 @@ def parse_response(data):
     except Exception as e:
         print("JSON 파싱 실패:", e)
         return None
+
