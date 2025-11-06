@@ -195,7 +195,7 @@ CORS_ALLOWED_ORIGINS = [ #API 호출할 수 있는 출처 목록
   "http://localhost:5173",
   "https://sein0327.shop",
   "https://api.sein0327.shop",
-  "https://scandy.vercel.app/",
+  "https://scandy.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [ #CSRF 토큰 검증 통과
@@ -204,7 +204,7 @@ CSRF_TRUSTED_ORIGINS = [ #CSRF 토큰 검증 통과
   "http://localhost:5173",
   "https://sein0327.shop",
   "https://api.sein0327.shop",
-  "https://scandy.vercel.app/",
+  "https://scandy.vercel.app",
 ]
 CORS_ALLOW_CREDENTIALS = True #HTTP 자격증명 추가
 CSRF_COOKIE_SECURE = True #http 보안!
