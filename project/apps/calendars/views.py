@@ -1,6 +1,6 @@
 
 from django.db.models import Q
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
@@ -19,7 +19,6 @@ from .models import Schedule, Tag
 from .serializers import (ScheduleSerializer, ScheduleCreateSerializer, ScheduleUpdateSerializer,
                           TagSerializer, TagCreateSerializer, TagUpdateSerializer)
 from .services import expand_repeating_schedule
-from .google_calendar import create_google_event
 
 class ScheduleViewSet(viewsets.ModelViewSet):
     # user authentication class.
@@ -35,6 +34,16 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     # list의 경우 파라미터에 start_datetime, end_datetime이 있다면 그걸로 필터링 해야 한다.
     # 또한 태그 필터링도 지원하여야 한다. tag로 파라미터를 받는다.
     # 없는 경우 그냥 get_queryset을 받는다. (user의 모든 일정)
+    
+    @extend_schema(
+        summary="일정 목록 조회 (날짜/태그 필터링)",
+        parameters=[
+            OpenApiParameter(name="start_datetime", description="조회 시작 날짜 (예: 2025-11-01T00:00:00)", required=False),
+            OpenApiParameter(name="end_datetime", description="조회 종료 날짜 (예: 2025-11-30T23:59:59)", required=False),
+            OpenApiParameter(name="tag", description="태그 ID (예: 3)", required=False),
+        ],
+        responses={200: ScheduleSerializer(many=True)},
+    )
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         
@@ -88,7 +97,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # 스케쥴 분리와 동시에 필터링도 수행한다.
         expanded_scheds: list = expand_repeating_schedule(db_sched_list, filter_range)
         
-        return Response(expanded_scheds, status=status.HTTP_200_OK)
+        return Response({"detail": "일정 조회에 성공했습니다.", "data": expanded_scheds}, status=status.HTTP_200_OK)
 
     #########################################################################################################################################
     # 일정 생성     
@@ -102,8 +111,10 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 creds = get_creds_from_google_token(request)
                 post_or_update_schedule_of_user(request.user, creds, schedule)
 
-            return Response(ScheduleSerializer(schedule).data, status=status.HTTP_201_CREATED)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "일정 등록을 성공했습니다.", "data": ScheduleSerializer(schedule).data}, 
+                            status=status.HTTP_201_CREATED)
+        return Response({"detail": "일정 등록을 실패했습니다.", "error":serializer.errors}, 
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
     def update(self, request, *args, **kwargs):
@@ -120,35 +131,83 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             if request.user.is_google_sync:
                 creds = get_creds_from_google_token(request)
                 post_or_update_schedule_of_user(request.user, creds, schedule)
-            return Response(ScheduleSerializer(schedule).data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "일정 수정을 성공했습니다.", "data": ScheduleSerializer(schedule).data}, 
+                            status=status.HTTP_200_OK)
+        return Response({"detail": "일정 수정을 실패했습니다.", "error":serializer.errors},
+                        status=status.HTTP_400_BAD_REQUEST)
     
     def destroy(self, request, *args, **kwargs):
-        schedule = self.get_object()
-        if request.user.is_google_sync:
-           # 삭제할때 google calendar의 데이터도 삭제해야 함.
-           creds = get_creds_from_google_token(request)
-           delete_from_schedule(creds, schedule)
-
-        return super().destroy(request, *args, **kwargs)
-
-    @action(detail=False, methods=["GET"])
-    # 태그명을 받아, 태그명에 해당하는 일정만 보여주기
-    def filter(self, request):
-        tag_name = request.query_params.get("tag")
-        
-        if not tag_name:
+        try:
+            schedule = self.get_object()
+            if request.user.is_google_sync:
+                # 삭제할때 google calendar의 데이터도 삭제해야 함.
+                creds = get_creds_from_google_token(request)
+                delete_from_schedule(creds, schedule)
+            
+            # super().destroy(request, *args, **kwargs)
+            schedule.delete()
             return Response(
-                {"error": "tag가 필요합니다."},
+                {"detail": f"'{schedule.title}' 일정이 삭제되었습니다."},
+                status=status.HTTP_200_OK
+            )
+        
+        except Exception as e:
+            return Response(
+                {"error": f"삭제 중 오류가 발생했습니다: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-
-        # Tag 모델의 name 기준으로 필터링
-        tag_schedules = Schedule.objects.filter(tags__name=tag_name)
-
-        serializer = self.get_serializer(tag_schedules, many=True)
-        return Response(serializer.data, status=status.HTTP_200_OK)
         
+    @extend_schema(
+        summary="일정 검색",
+        parameters=[OpenApiParameter(name="keyword", description="검색어", required=True)]
+    )   
+    @action(detail=False, methods=["GET"])
+    # title, content, tag 값을 구글, DB에서 검색하여 필터링
+    def search(self, request):
+        user = request.user
+        keyword = request.query_params.get("keyword", "").strip()
+        
+        if not keyword:
+            return Response(
+                {"error": "검색어가 필요합니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        
+        queryset = self.get_queryset()
+        
+        # db 검색
+        db_results = queryset.filter(
+            Q(title__icontains=keyword)
+            | Q(content__icontains=keyword)
+            | Q(tag__name__icontains=keyword)
+        ).distinct()
+
+        db_serialized = ScheduleSerializer(db_results, many=True).data
+
+        # 구글 연동시, 구글 검색
+        google_results = []
+        if user.is_google_sync:
+            creds = get_creds_from_google_token(request)
+            google_schedules = get_schedules_of_user(user, creds)
+            
+            # 구글 일정 필터링
+            google_results = [
+                event for event in google_schedules
+                if keyword.lower() in event.get("summary", "").lower()
+                or keyword.lower() in event.get("description", "").lower()
+            ]
+
+        # 병합 및 중복 제거
+        merged_results = merge_scheds(db_serialized, google_results)
+        
+        return Response(
+            {
+                "detail": f"'{keyword}' 검색 결과입니다.",
+                "count": len(merged_results),
+                "data": merged_results
+            },
+            status=status.HTTP_200_OK
+        )
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]
