@@ -1,6 +1,9 @@
 
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from datetime import datetime, timedelta
+import unicodedata
+
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
@@ -85,8 +88,11 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_google_sync:
             creds = get_creds_from_google_token(self.request)
+            print("GOOGLE SYNC:", user.email, user.is_google_sync)
+            print("CREDS:", creds)
             google_sched_list = get_schedules_of_user(user, creds, start_datetime, end_datetime)
             # 중복되는 것들은 없애야 한다.
+            print("GOOGLE SCHEDULES:", len(google_sched_list))
             db_sched_list = merge_scheds(db_sched_list, google_sched_list)
 
         # 2차 필터링. expanded 된 것들도 전부 필터링한다.
@@ -165,21 +171,40 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     # title, content, tag 값을 구글, DB에서 검색하여 필터링
     def search(self, request):
         user = request.user
+        start = request.query_params.get("start", "").strip()
+        end = request.query_params.get("end", "").strip()
         keyword = request.query_params.get("q", "").strip()
         
-        if not keyword:
+        if not keyword and start and end:
             return Response(
-                {"error": "검색어가 필요합니다."},
+                {"error": "검색어, start, end가 필요합니다."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         queryset = self.get_queryset()
+
+        now = datetime.now()
+        # start, end가 없을 경우: 이번 달 1일 ~ 마지막 날 / 일정 검색 에러 방지
+        if start and end:
+            start_dt, end_dt = map(datetime.fromisoformat, [start, end])
+        else:
+            y, m = now.year, now.month
+            start_dt = datetime(y, m, 1)
+            if m == 12:
+                end_dt = datetime(y + 1, 1, 1) - timedelta(seconds=1)
+            else:
+                end_dt = datetime(y, m + 1, 1) - timedelta(seconds=1)
+            print("start", start_dt)
+            print("end", end_dt)
         
         # db 검색
         db_results = queryset.filter(
-            Q(title__icontains=keyword)
+            (Q(title__icontains=keyword)
             | Q(content__icontains=keyword)
             | Q(tag__name__icontains=keyword)
+            )
+            & Q(start_datetime__lte=end_dt)
+            & Q(end_datetime__gte=start_dt)
         ).distinct()
 
         db_serialized = ScheduleSerializer(db_results, many=True).data
@@ -188,13 +213,14 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         google_results = []
         if user.is_google_sync:
             creds = get_creds_from_google_token(request)
-            google_schedules = get_schedules_of_user(user, creds)
+            google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
+            print("가져온 구글 일정", google_schedules)
             
             # 구글 일정 필터링
             google_results = [
                 event for event in google_schedules
-                if keyword.lower() in event.get("summary", "").lower()
-                or keyword.lower() in event.get("description", "").lower()
+                if keyword.lower() in event.get("title", "").lower()
+                or keyword.lower() in event.get("content", "").lower()
             ]
 
         # 병합 및 중복 제거
