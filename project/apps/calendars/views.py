@@ -237,8 +237,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     
     ###################################
     @extend_schema(summary="구글 일정 수정")   
-    @action(detail=False, methods=["PATCH"])
-    def update_google_event(self, request, google_event_id):
+    @action(detail=False, methods=["PATCH"],url_path="google")
+    def update_google_event(self, request):
         # DB에 없는 구글 이벤트 수정
         try:
             if not request.user.is_google_sync:
@@ -246,6 +246,10 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 
             creds = get_creds_from_google_token(request)
             updated_data = request.data
+            google_event_id = (
+                request.headers.get("Google-Event-ID") or
+                request.data.get("google_event_id")
+            )
 
             # 구글 API 업데이트 함수 호출
             result = post_or_update_schedule_of_user(
@@ -265,12 +269,17 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         
     @extend_schema(summary="구글 일정 수정")   
-    @action(detail=False, methods=["DELETE"])
-    def delete_google_event(self, request, google_event_id):
+    @action(detail=False, methods=["DELETE"], url_path="google")
+    def delete_google_event(self, request):
         # DB에 없는 구글 이벤트 수정
         try:
             if not request.user.is_google_sync:
                 return Response({"error": "구글 연동이 필요합니다."}, status=status.HTTP_403_FORBIDDEN)
+            
+            google_event_id = (
+                request.headers.get("Google-Event-ID") or
+                request.data.get("google_event_id")
+            )
 
             creds = get_creds_from_google_token(request)
             delete_from_schedule(creds, google_event_id=google_event_id)
