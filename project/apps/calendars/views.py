@@ -237,7 +237,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     
     ###################################
     @extend_schema(summary="구글 일정 수정")   
-    @action(detail=False, methods=["PATCH"],url_path="google/")
+    @action(detail=False, methods=["PATCH"],url_path="google_update")
     def update_google_event(self, request):
         # DB에 없는 구글 이벤트 수정
         try:
@@ -269,7 +269,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                             status=status.HTTP_400_BAD_REQUEST)
         
     @extend_schema(summary="구글 일정 삭제")   
-    @action(detail=False, methods=["DELETE"], url_path="google/")
+    @action(detail=False, methods=["DELETE"], url_path="google_delete")
     def delete_google_event(self, request):
         # DB에 없는 구글 이벤트 삭제
         try:
