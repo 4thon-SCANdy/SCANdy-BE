@@ -68,6 +68,8 @@ INSTALLED_APPS = [
     'apps.tasks',
     'apps.calendars',
     'apps.ocr',
+    'apps.session_tokens',
+    'apps.google_calendar',
 ]
 
 REST_FRAMEWORK = {
@@ -76,13 +78,35 @@ REST_FRAMEWORK = {
 }
 
 SPECTACULAR_SETTINGS = {
-    # OAS3 Meta정보 API를 비노출 처리한다.
-    'SERVE_INCLUDE_SCHEMA': False,
-}
+    
+    'SERVE_INCLUDE_SCHEMA': False, # OAS3 Meta정보 API를 비노출 처리한다.
+    
+    'COMPONENT_SPLIT_REQUEST': True, # 웹 인터페이스에서 파일 업로드 기능 제공 설정
 
-SPECTACULAR_SETTINGS = {
-    # 웹 인터페이스에서 파일 업로드 기능 제공 설정
-    'COMPONENT_SPLIT_REQUEST': True,
+    # 헤더 관련
+    'SECURITY': [{'Access_Token': []}],
+    'SECURITY_SCHEMES': {
+        'Access_Token': {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'Access-Token',  # Authorization 대신 Access-Token 사용
+            'description': (
+                "JWT Access Token 입력\n\n"
+                "예시: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`"
+            ),
+        },
+    },
+
+    # Swagger 문서 접근 권한
+    'SERVE_PERMISSIONS': ['rest_framework.permissions.AllowAny'],
+
+    # 기본 cookieAuth, basicAuth 제거
+    'APPEND_COMPONENTS': {
+        'securitySchemes': {},
+    },
+
+    # 자동으로 추가되는 기본 auth 비활성화
+    'APPEND_SECURITY': [],
 }
 
 MIDDLEWARE = [
@@ -149,13 +173,13 @@ AUTH_PASSWORD_VALIDATORS = [
 # Internationalization
 # https://docs.djangoproject.com/en/5.2/topics/i18n/
 
-LANGUAGE_CODE = 'en-us'
+LANGUAGE_CODE = 'ko-kr'
 
-TIME_ZONE = 'UTC'
+TIME_ZONE = 'Asia/Seoul'
 
 USE_I18N = True
 
-USE_TZ = True
+USE_TZ = False
 
 
 # Static files (CSS, JavaScript, Images)
@@ -188,6 +212,9 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 브라우저를 닫아도 세션 유�
 
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
+
+# 프록시 가져오기.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 
 # FRONT_ORIGIN = env.str("FRONT_ORIGIN").rstrip("/")
 

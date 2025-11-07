@@ -24,6 +24,10 @@ urlpatterns = [
     path('auth/', include('apps.users.urls')),
     path('calendar/', include('apps.calendars.urls')),
     path('ocr/', include('apps.ocr.urls')),
+    path('session/', include('apps.session_tokens.urls')),
+    path('google_calendar/', include('apps.google_calendar.urls')),
+    path('task/', include('apps.tasks.urls')),
+    
     path('api/schema/', SpectacularJSONAPIView.as_view(), name='schema-json'),
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema-json'), name='redoc'),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema-json"), name="swagger-ui"),

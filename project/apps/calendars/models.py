@@ -1,6 +1,9 @@
 from django.db import models
-from apps.users.models import User
 
+from apps.users.models import User
+from apps.google_calendar.models import GoogleCalendar
+
+from external.time_manager import KST
 
 class Calendar(models.Model):
     id = models.AutoField(primary_key=True)
@@ -50,21 +53,27 @@ class Schedule(models.Model):
         related_name='schedules',
         db_column='tag_id'
     )
+    google_calendar = models.ForeignKey(
+        GoogleCalendar,
+        on_delete=models.CASCADE,
+        null=True,
+        blank=True,
+        related_name='google_calendars',
+        db_column='google_calendar_id',
+        default=None,
+    )
     google_event_id = models.CharField(max_length=255, null=True, blank=True)
     title = models.CharField(max_length=200, null=False)
     content = models.TextField(null=True, blank=True)
-    start_datetime = models.DateTimeField(null=False)
-    end_datetime = models.DateTimeField(null=False)
-    until = models.DateTimeField(null=False)
-    all_day = models.BooleanField(null=True, default=False)
+    start_datetime = models.DateTimeField(null=True)
+    end_datetime = models.DateTimeField(null=True)
+
+    until = models.DateTimeField(null=True)
+
+    all_day = models.BooleanField(null=False, default=False)
     repeat = models.CharField(max_length=10, choices=REPEAT_CHOICES, null=False, blank=False, default="NONE")
     created_at = models.DateTimeField(auto_now_add=True, null=True)
     updated_at = models.DateTimeField(auto_now=True, null=True)
-    
-    def save(self, *args, **kwargs):
-        # 만약 repeat가 NONE이라면 until을 end_datetime과 똑같이 설정한다.
-        if self.repeat == "NONE":
-            self.until = self.end_datetime
-            
-        super().save(*args, **kwargs)
+    locate = models.TextField(null=True, blank=True)
+
         
