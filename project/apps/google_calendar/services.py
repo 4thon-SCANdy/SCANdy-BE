@@ -182,17 +182,31 @@ def post_or_update_schedule_of_user(user: User, credential, sched: Schedule | di
         sched.google_event_id = event.get('id')
         sched.google_calendar = primary_calendar
         sched.save()
+    
+    return event
 
-def delete_from_schedule(credential, schedule: Schedule):
-    if not schedule.google_calendar or not schedule.google_event_id:
-        return
+# DB에 없는 일정도 삭제하기 위해 event_id, user 인자 추가
+def delete_from_schedule(credential, schedule: Schedule | dict = None, google_event_id=None, user: User = None):
 
     service = build("calendar", "v3", credentials=credential)
 
+    calendar_id = (
+        getattr(getattr(schedule, "google_calendar", None), "google_calendar_str_id", None)
+        or user.google_calendars.filter(is_primary=True)
+        .values_list("google_calendar_str_id", flat=True)
+        .first()
+        or "primary"
+    )
+
+    event_id = getattr(schedule, "google_event_id", None) or google_event_id
+
+    if not calendar_id or not event_id:
+        return
+    
     try:
         service.events().delete(
-            calendarId=schedule.google_calendar.google_calendar_str_id,
-            eventId=schedule.google_event_id
+            calendarId=calendar_id,
+            eventId=event_id
         ).execute()
     except googleapiclient.errors.HttpError as e:
         if e.resp.status != 404:

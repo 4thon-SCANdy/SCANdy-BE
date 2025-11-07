@@ -260,17 +260,18 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             )
 
             return Response({
-                "detail": "구글 일정이 수정되었습니다."
+                "detail": "구글 일정이 수정되었습니다.",
+                "data": result
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
             return Response({"error": f"구글 일정 수정 중 오류가 발생했습니다. {str(e)}"},
                             status=status.HTTP_400_BAD_REQUEST)
         
-    @extend_schema(summary="구글 일정 수정")   
-    @action(detail=False, methods=["DELETE"], url_path="google")
+    @extend_schema(summary="구글 일정 삭제")   
+    @action(detail=False, methods=["DELETE"], url_path="google/")
     def delete_google_event(self, request):
-        # DB에 없는 구글 이벤트 수정
+        # DB에 없는 구글 이벤트 삭제
         try:
             if not request.user.is_google_sync:
                 return Response({"error": "구글 연동이 필요합니다."}, status=status.HTTP_403_FORBIDDEN)
@@ -281,7 +282,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             )
 
             creds = get_creds_from_google_token(request)
-            delete_from_schedule(creds, google_event_id=google_event_id)
+            delete_from_schedule(creds, google_event_id=google_event_id, user=request.user)
 
             return Response({"detail": f"구글 일정({google_event_id})이 삭제되었습니다."},
                             status=status.HTTP_200_OK)
