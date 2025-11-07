@@ -237,7 +237,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     
     ###################################
     @extend_schema(summary="구글 일정 수정")   
-    @action(detail=False, methods=["PATCH"],url_path="google")
+    @action(detail=False, methods=["PATCH"],url_path="google/")
     def update_google_event(self, request):
         # DB에 없는 구글 이벤트 수정
         try:
@@ -256,12 +256,11 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 request.user,
                 creds,
                 updated_data,
-                google_event_id=google_event_id  # 기존 일정 ID 지정
+                google_event_id=google_event_id,  # 기존 일정 ID 지정
             )
 
             return Response({
-                "detail": "구글 일정이 수정되었습니다.",
-                "data": result,
+                "detail": "구글 일정이 수정되었습니다."
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
