@@ -234,6 +234,55 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+    
+    ###################################
+    @extend_schema(summary="구글 일정 수정")   
+    @action(detail=False, methods=["PATCH"])
+    def update_google_event(self, request, google_event_id):
+        # DB에 없는 구글 이벤트 수정
+        try:
+            if not request.user.is_google_sync:
+                return Response({"error": "구글 연동이 필요합니다."}, status=status.HTTP_403_FORBIDDEN)
+
+            creds = get_creds_from_google_token(request)
+            updated_data = request.data
+
+            # 구글 API 업데이트 함수 호출
+            result = post_or_update_schedule_of_user(
+                request.user,
+                creds,
+                updated_data,
+                google_event_id=google_event_id  # 기존 일정 ID 지정
+            )
+
+            return Response({
+                "detail": "구글 일정이 수정되었습니다.",
+                "data": result,
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"구글 일정 수정 중 오류가 발생했습니다. {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+    @extend_schema(summary="구글 일정 수정")   
+    @action(detail=False, methods=["DELETE"])
+    def delete_google_event(self, request, google_event_id):
+        # DB에 없는 구글 이벤트 수정
+        try:
+            if not request.user.is_google_sync:
+                return Response({"error": "구글 연동이 필요합니다."}, status=status.HTTP_403_FORBIDDEN)
+
+            creds = get_creds_from_google_token(request)
+            delete_from_schedule(creds, google_event_id=google_event_id)
+
+            return Response({"detail": f"구글 일정({google_event_id})이 삭제되었습니다."},
+                            status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"구글 일정 삭제 중 오류가 발생했습니다. {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]
