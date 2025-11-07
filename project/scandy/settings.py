@@ -195,3 +195,6 @@ CSRF_COOKIE_SAMESITE = 'None'
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CLOVA_OCR_URL = env("CLOVA_OCR_URL")
+CLOVA_OCR_SECRET = env("CLOVA_OCR_SECRET")
