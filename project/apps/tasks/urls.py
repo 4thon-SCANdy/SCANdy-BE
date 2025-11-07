@@ -9,9 +9,12 @@ from .views import *
 
 app_name = "tasks"
 
-router = DefaultRouter(trailing_slash=False)
-router.register('', TaskViewSet, basename='task')
+# router = DefaultRouter(trailing_slash=False)
+# router.register('', TaskViewSet, basename='task')
 
 urlpatterns = [
-  path('', include(router.urls)),
+  # path('', include(router.urls)),
+  path("process/", ScheduleLLMView.as_view()),
+
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)
+

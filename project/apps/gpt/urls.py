@@ -1,6 +1,1 @@
-from django.urls import path
-from .views import ScheduleLLMView
-
-urlpatterns = [
-    path("test/", ScheduleLLMView.as_view()),
-]
+# llm 로직 gpt 앱 -> task 변경
