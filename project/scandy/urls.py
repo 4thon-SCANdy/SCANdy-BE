@@ -23,6 +23,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('auth/', include('apps.users.urls')),
     path('calendar/', include('apps.calendars.urls')),
+    path('ocr/', include('apps.ocr.urls')),
     path('session/', include('apps.session_tokens.urls')),
     path('google_calendar/', include('apps.google_calendar.urls')),
     path('task/', include('apps.tasks.urls')),

@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.tasks',
     'apps.calendars',
+    'apps.ocr',
     'apps.session_tokens',
     'apps.google_calendar',
 ]
@@ -225,3 +226,6 @@ SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CLOVA_OCR_URL = env("CLOVA_OCR_URL")
+CLOVA_OCR_SECRET = env("CLOVA_OCR_SECRET")
