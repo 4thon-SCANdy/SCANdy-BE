@@ -215,12 +215,22 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             creds = get_creds_from_google_token(request)
             google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
             print("가져온 구글 일정", google_schedules)
-            
-            # 구글 일정 필터링
+
+            # DB에 이미 존재하는 google_event_id 수집
+            existing_event_ids = {
+                sched.get("google_event_id")
+                for sched in db_serialized
+                if sched.get("google_event_id")
+            }
+
+            # 구글 일정 필터링 (중복 제거)
             google_results = [
                 event for event in google_schedules
-                if keyword.lower() in event.get("title", "").lower()
-                or keyword.lower() in event.get("content", "").lower()
+                if (
+                    keyword.lower() in event.get("title", "").lower()
+                    or keyword.lower() in event.get("content", "").lower()
+                )
+                and event.get("google_event_id") not in existing_event_ids
             ]
 
         # 병합 및 중복 제거
