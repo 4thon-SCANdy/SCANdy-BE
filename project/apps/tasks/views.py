@@ -51,21 +51,21 @@ class ScheduleLLMView(APIView):
 
         results = [] # 여러 문장을 받도록
         for t in texts:
-            # OCR 파싱 → 스케줄 생성
-            parsed = parse_response(t)
-            created = create_schedule(user, parsed)
-            results.append(created)
+            # 스케줄 생성 -> OCR 파싱
+            created = create_schedule(t)
+            parsed = parse_response(created)
+            results.append(parsed)
 
         print("create_schedule 결과:", results)
 
         # 겹치는 일정 조회
         recommends = []
         for r in results:
-            recommend = recommend_time(user, results["start_datetime"], results["end_datetime"])
+            recommend = recommend_time(user, r["start_datetime"], r["end_datetime"])
             recommends.append(recommend)
 
         return Response(
-            {"llm_result": results, "recommendation": recommend},
+            {"llm_result": results, "recommendation": recommends},
             status=status.HTTP_200_OK,
         )
     
