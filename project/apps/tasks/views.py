@@ -30,11 +30,10 @@ class ScheduleLLMView(APIView):
         # 겹치는 일정 조회
         recommends = []
         for r in results:
-            recommend = recommend_time(user, r["start_datetime"], r["end_datetime"])
+            recommend = recommend_time(user, r["start_datetime"], r["end_datetime"], request)
             recommends.append(recommend)
 
         return Response(
             {"llm_result": results, "recommendation": recommends},
             status=status.HTTP_200_OK,
         )
-    
