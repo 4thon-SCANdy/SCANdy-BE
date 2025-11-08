@@ -305,7 +305,6 @@ class ScheduleViewSet(viewsets.ModelViewSet):
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]
-    serializer_class = ScheduleSerializer
     permission_classes = [permissions.IsAuthenticated]
     
     serializer_class = TagSerializer
@@ -315,12 +314,22 @@ class TagViewSet(viewsets.ModelViewSet):
             calendar=self.request.user.calendar
         )
     
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+        serializer = self.get_serializer(queryset, many=True)
+        tags = serializer.data
+        
+        return Response({"detail": "태그 조회에 성공했습니다.",
+                         "count": len(tags), "data": tags}, status=status.HTTP_200_OK)
+    
     def create(self, request, *args, **kwargs):
         serializer = TagCreateSerializer(data=request.data, context={'request': request})
         
         if serializer.is_valid():
             tag = serializer.save()
-            return Response(TagSerializer(tag).data, status=status.HTTP_201_CREATED)
+            return Response(
+                {"detail": "태그 등록을 성공했습니다.", "data": TagSerializer(tag).data}
+                ,status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
     def update(self, request, *args, **kwargs):
@@ -335,8 +344,15 @@ class TagViewSet(viewsets.ModelViewSet):
         
         if serializer.is_valid():
             tag = serializer.save()
-            return Response(TagSerializer(tag).data, status=status.HTTP_200_OK)
+            return Response(
+                {"detail": "태그 수정을 성공했습니다.", "data": TagSerializer(tag).data}
+                , status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
-    
+    def destroy(self, request, *args, **kwargs):
+        tag = self.get_object()
+        tag_id = tag.id
+        tag.delete()
+        
+        return Response({"detail": f"태그 삭제({tag_id})에 성공했습니다."}, status=status.HTTP_200_OK)
 
