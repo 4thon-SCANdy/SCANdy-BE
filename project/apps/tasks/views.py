@@ -41,22 +41,31 @@ class ScheduleLLMView(APIView):
     permission_classes = [IsAuthenticated]
 
     def post(self, request):
-        text = request.data.get("text") #ocr return 값이 들어갈 예정
-        if not text:
+        texts = request.data.get("text") #ocr return 값이 들어갈 예정
+        if not texts:
             return Response({"error": "text 필드가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
 
         user = request.user
         print("요청 유저:", user)
+        print("input text:", texts)
 
-        data = create_schedule(input_text=text)
-        print("create_schedule 결과:", data)
+        results = [] # 여러 문장을 받도록
+        for t in texts:
+            # OCR 파싱 → 스케줄 생성
+            parsed = parse_response(t)
+            created = create_schedule(user, parsed)
+            results.append(created)
 
-        result = parse_response(data)
+        print("create_schedule 결과:", results)
 
-        recommend = recommend_time(user, result["start_datetime"], result["end_datetime"])
+        # 겹치는 일정 조회
+        recommends = []
+        for r in results:
+            recommend = recommend_time(user, results["start_datetime"], results["end_datetime"])
+            recommends.append(recommend)
 
         return Response(
-            {"llm_result": result, "recommendation": recommend},
+            {"llm_result": results, "recommendation": recommend},
             status=status.HTTP_200_OK,
         )
     
