@@ -120,7 +120,7 @@ def recommend_time(user, start_str, end_str, request=None):
     )
 
     # 2. 구글 일정도 검색
-    all_schedules = overlapping
+    all_schedules = list(overlapping)
     if user.is_google_sync and request is not None:
         creds = get_creds_from_google_token(request)
         google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
