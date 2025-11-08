@@ -1,6 +1,9 @@
 
 from django.db.models import Q
 from drf_spectacular.utils import extend_schema, OpenApiParameter
+from datetime import datetime, timedelta
+import unicodedata
+
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
@@ -85,8 +88,11 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         user = self.request.user
         if user.is_google_sync:
             creds = get_creds_from_google_token(self.request)
+            print("GOOGLE SYNC:", user.email, user.is_google_sync)
+            print("CREDS:", creds)
             google_sched_list = get_schedules_of_user(user, creds, start_datetime, end_datetime)
             # 중복되는 것들은 없애야 한다.
+            print("GOOGLE SCHEDULES:", len(google_sched_list))
             db_sched_list = merge_scheds(db_sched_list, google_sched_list)
 
         # 2차 필터링. expanded 된 것들도 전부 필터링한다.
@@ -165,21 +171,40 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     # title, content, tag 값을 구글, DB에서 검색하여 필터링
     def search(self, request):
         user = request.user
-        keyword = request.query_params.get("keyword", "").strip()
+        start = request.query_params.get("start", "").strip()
+        end = request.query_params.get("end", "").strip()
+        keyword = request.query_params.get("q", "").strip()
         
-        if not keyword:
+        if not keyword and start and end:
             return Response(
-                {"error": "검색어가 필요합니다."},
+                {"error": "검색어, start, end가 필요합니다."},
                 status=status.HTTP_400_BAD_REQUEST
             )
         
         queryset = self.get_queryset()
+
+        now = datetime.now()
+        # start, end가 없을 경우: 이번 달 1일 ~ 마지막 날 / 일정 검색 에러 방지
+        if start and end:
+            start_dt, end_dt = map(datetime.fromisoformat, [start, end])
+        else:
+            y, m = now.year, now.month
+            start_dt = datetime(y, m, 1)
+            if m == 12:
+                end_dt = datetime(y + 1, 1, 1) - timedelta(seconds=1)
+            else:
+                end_dt = datetime(y, m + 1, 1) - timedelta(seconds=1)
+            print("start", start_dt)
+            print("end", end_dt)
         
         # db 검색
         db_results = queryset.filter(
-            Q(title__icontains=keyword)
+            (Q(title__icontains=keyword)
             | Q(content__icontains=keyword)
             | Q(tag__name__icontains=keyword)
+            )
+            & Q(start_datetime__lte=end_dt)
+            & Q(end_datetime__gte=start_dt)
         ).distinct()
 
         db_serialized = ScheduleSerializer(db_results, many=True).data
@@ -188,13 +213,14 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         google_results = []
         if user.is_google_sync:
             creds = get_creds_from_google_token(request)
-            google_schedules = get_schedules_of_user(user, creds)
+            google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
+            print("가져온 구글 일정", google_schedules)
             
             # 구글 일정 필터링
             google_results = [
                 event for event in google_schedules
-                if keyword.lower() in event.get("summary", "").lower()
-                or keyword.lower() in event.get("description", "").lower()
+                if keyword.lower() in event.get("title", "").lower()
+                or keyword.lower() in event.get("content", "").lower()
             ]
 
         # 병합 및 중복 제거
@@ -208,6 +234,64 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             },
             status=status.HTTP_200_OK
         )
+    
+    ###################################
+    @extend_schema(summary="구글 일정 수정")   
+    @action(detail=False, methods=["PATCH"],url_path="google_update")
+    def update_google_event(self, request):
+        # DB에 없는 구글 이벤트 수정
+        try:
+            if not request.user.is_google_sync:
+                return Response({"error": "구글 연동이 필요합니다."}, status=status.HTTP_403_FORBIDDEN)
+
+            creds = get_creds_from_google_token(request)
+            updated_data = request.data
+            google_event_id = (
+                request.headers.get("Google-Event-ID") or
+                request.data.get("google_event_id")
+            )
+
+            # 구글 API 업데이트 함수 호출
+            result = post_or_update_schedule_of_user(
+                request.user,
+                creds,
+                updated_data,
+                google_event_id=google_event_id,  # 기존 일정 ID 지정
+            )
+
+            return Response({
+                "detail": "구글 일정이 수정되었습니다.",
+                "data": result
+            }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"구글 일정 수정 중 오류가 발생했습니다. {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+        
+    @extend_schema(summary="구글 일정 삭제")   
+    @action(detail=False, methods=["DELETE"], url_path="google_delete")
+    def delete_google_event(self, request):
+        # DB에 없는 구글 이벤트 삭제
+        try:
+            if not request.user.is_google_sync:
+                return Response({"error": "구글 연동이 필요합니다."}, status=status.HTTP_403_FORBIDDEN)
+            
+            google_event_id = (
+                request.headers.get("Google-Event-ID") or
+                request.data.get("google_event_id")
+            )
+
+            creds = get_creds_from_google_token(request)
+            delete_from_schedule(creds, google_event_id=google_event_id, user=request.user)
+
+            return Response({"detail": f"구글 일정({google_event_id})이 삭제되었습니다."},
+                            status=status.HTTP_200_OK)
+
+        except Exception as e:
+            return Response({"error": f"구글 일정 삭제 중 오류가 발생했습니다. {str(e)}"},
+                            status=status.HTTP_400_BAD_REQUEST)
+
+
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]

@@ -95,32 +95,77 @@ def schedule_to_google_calendar_event(schedule: Schedule) -> dict:
             if schedule.repeat != "NONE" and schedule.until else {})
     }
     
+def make_google_event_dict(sched: dict):
+    start_val = sched.get("start_datetime")
+    end_val = sched.get("end_datetime")
+
+    def build_time_field(value):
+        if not value:
+            return None
+        if "T" in value:  # 시간 포함이면 dateTime으로 처리
+            return event_dict.append({"dateTime": value, "timeZone": "Asia/Seoul"})
+        else:  # 날짜만 있으면 all-day 이벤트로 처리
+            return {"date": value}
+
+    event_dict = {
+        "summary": sched.get("title", ""),
+        "description": sched.get("content", ""),
+    }
+
+    start_field = build_time_field(start_val)
+    end_field = build_time_field(end_val)
+
+    if start_field:
+        event_dict["start"] = start_field
+    if end_field:
+        event_dict["end"] = end_field
+
+    return event_dict
+
 
 # schedule을 구글 캘린더 primary에 추가하는 함수.
-def post_or_update_schedule_of_user(user: User, credential, sched: Schedule):
+# DB에 저장되지 않은 구글 데이터도 받을 수 있도록 인자 옵션 수정
+def post_or_update_schedule_of_user(user: User, credential, sched: Schedule | dict, google_event_id=None):
     primary_calendar = user.google_calendars.filter(is_primary=True).first()
     service = build("calendar", "v3", credentials=credential)
-    event_dict = schedule_to_google_calendar_event(schedule=sched)
+
+    if isinstance(sched, dict):
+        event_dict = make_google_event_dict(sched)
+    else:
+        event_dict = schedule_to_google_calendar_event(schedule=sched) # DB에 저장된 경우
+
+    # 인자로 받은 구글 ID가 있으면 사용
+    event_id = google_event_id or sched.google_event_id
+    calendar_id = (
+        getattr(sched, "google_calendar_str_id", None)
+        or user.google_calendars.filter(is_primary=True).values_list("google_calendar_str_id", flat=True).first()
+    )
 
     # 이미 구글 이벤트 ID가 있는 경우 update
-    if sched.google_calendar and sched.google_event_id:
+    if (isinstance(sched, Schedule) and sched.google_calendar and sched.google_event_id) or google_event_id:
         try:
             event = service.events().get(
-                calendarId=sched.google_calendar.google_calendar_str_id,
-                eventId=sched.google_event_id
+                calendarId=calendar_id,
+                eventId=event_id
             ).execute()
+            print("가져온 일정", event)
+
+            for key, value in event_dict.items():
+                event[key] = value
+
+            print("업데이트한 일정", event)
 
             # 기존 이벤트 업데이트
             event = service.events().update(
-                calendarId=sched.google_calendar.google_calendar_str_id,
-                eventId=sched.google_event_id,
-                body=event_dict
+                calendarId=calendar_id,
+                eventId=event_id,
+                body=event
             ).execute()
         except googleapiclient.errors.HttpError as e:
             # 이벤트가 없는 경우 insert
             if e.resp.status == 404:
                 event = service.events().insert(
-                    calendarId=primary_calendar.google_calendar_str_id,
+                    calendarId=calendar_id,
                     body=event_dict
                 ).execute()
             else:
@@ -128,25 +173,40 @@ def post_or_update_schedule_of_user(user: User, credential, sched: Schedule):
     else:
         # 새로 삽입
         event = service.events().insert(
-            calendarId=primary_calendar.google_calendar_str_id,
+            calendarId=calendar_id,
             body=event_dict
         ).execute()
 
-    # 구글 관련 데이터 저장
-    sched.google_event_id = event.get('id')
-    sched.google_calendar = primary_calendar
-    sched.save()
+    # 구글 관련 데이터 저장, schedule 객체일 경우만
+    if isinstance(sched, Schedule):
+        sched.google_event_id = event.get('id')
+        sched.google_calendar = primary_calendar
+        sched.save()
+    
+    return event
 
-def delete_from_schedule(credential, schedule: Schedule):
-    if not schedule.google_calendar or not schedule.google_event_id:
-        return
+# DB에 없는 일정도 삭제하기 위해 event_id, user 인자 추가
+def delete_from_schedule(credential, schedule: Schedule | dict = None, google_event_id=None, user: User = None):
 
     service = build("calendar", "v3", credentials=credential)
 
+    calendar_id = (
+        getattr(getattr(schedule, "google_calendar", None), "google_calendar_str_id", None)
+        or user.google_calendars.filter(is_primary=True)
+        .values_list("google_calendar_str_id", flat=True)
+        .first()
+        or "primary"
+    )
+
+    event_id = getattr(schedule, "google_event_id", None) or google_event_id
+
+    if not calendar_id or not event_id:
+        return
+    
     try:
         service.events().delete(
-            calendarId=schedule.google_calendar.google_calendar_str_id,
-            eventId=schedule.google_event_id
+            calendarId=calendar_id,
+            eventId=event_id
         ).execute()
     except googleapiclient.errors.HttpError as e:
         if e.resp.status != 404:
