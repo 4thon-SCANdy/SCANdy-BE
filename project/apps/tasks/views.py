@@ -2,38 +2,94 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
+
 from apps.users.services import JWTAuthentication
-from .services import create_schedule, parse_response, recommend_time
-class ScheduleLLMView(APIView):
+from apps.ocr.views import OcrView
+
+from .services import create_schedule, parse_response, recommend_time, refine_ocr
+
+import time
+
+class TaskLLMView(OcrView):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
 
-    def post(self, request):
-        texts = request.data.get("text") #ocr return 값이 들어갈 예정
-        if not texts:
-            return Response({"error": "text 필드가 필요합니다."}, status=status.HTTP_400_BAD_REQUEST)
+    def post(self, request, *args, **kwargs): 
 
+        # 1) 이미지 업로드 ->  ocr 처리 수행
+        ocr_response = super().post(request, *args, **kwargs)
+
+        ocr_results = ocr_response.data.get("results", [])
+        if not ocr_results:
+            return Response(
+                {"error": "OCR 결과가 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        
+        print("ocr_results:", ocr_results)
+
+        
+        # 2) ocr 결과 전처리
+        all_texts = []
+        for item in ocr_results:
+            if "texts" in item and isinstance(item["texts"], list):
+                all_texts.extend(item["texts"])
+
+        if not all_texts:
+            return Response(
+                {"error": "OCR에서 텍스트를 찾을 수 없습니다."},
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+        print("ocr_all texts:", all_texts)
+
+        # 3) refine_ocr로 일정 문장 추출
+        refined_ocr = refine_ocr(all_texts)
+
+        if "error" in refined_ocr:
+            return Response(refined_ocr, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+
+        if not refined_ocr:
+            return Response({"error": "OCR에서 일정을 추출할 수 없습니다."}, status=status.HTTP_400_BAD_REQUEST)
+        
+        # 3) 각 텍스트에 대해 일정 생성
         user = request.user
-        print("요청 유저:", user)
-        print("input text:", texts)
+        print("refined_ocr 결과:", refined_ocr)
+
+        if isinstance(refined_ocr, list):
+            refined_ocr = [r for r in refined_ocr if r.strip()]
+        else:
+            refined_ocr = [refined_ocr]
 
         results = [] # 여러 문장을 받도록
-        for t in texts:
+        for t in refined_ocr:
             # 스케줄 생성 -> OCR 파싱
             created = create_schedule(t)
+            if isinstance(created, dict) and "error" in created:
+                print("create_schedule 실패:", created)
+                continue
+            print("일정 생성", created)
             parsed = parse_response(created)
-            results.append(parsed)
+
+            if not parsed:
+                continue    
+            results.extend(parsed)
 
         print("create_schedule 결과:", results)
 
-        # 겹치는 일정 조회
+        # 4) 겹치는 일정 조회 + 추천 시간 반환
         recommends = []
         for r in results:
-            recommend = recommend_time(user, r["start_datetime"], r["end_datetime"], request)
+            start = r.get("start_datetime")
+            end = r.get("end_datetime")
+
+            if not start or not end:
+                print("recommend_time skip: datetime 누락", r)
+                continue  # None 값이면 생략
+            recommend = recommend_time(user, start, end, request)
             recommends.append(recommend)
 
         return Response(
-            {"llm_result": results, "recommendation": recommends},
+            {"ocr_result": refined_ocr, "llm_result": results, "recommendation": recommends},
             status=status.HTTP_200_OK,
         )

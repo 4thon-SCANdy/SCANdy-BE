@@ -87,7 +87,6 @@ def create_schedule(input_text: str, model: str = "gpt-4o-mini"):
 
     try:
         r = requests.post(BASE, headers=_headers(), json=body, timeout=(5, 20))
-        print("헤더:", r.request.headers)
         r.raise_for_status()
         data = r.json()
         return data
@@ -100,11 +99,25 @@ def parse_response(data):
         content = data["choices"][0]["message"]["content"]
         # json 코드블록 제거
         content = re.sub(r"```json|```", "", content).strip()
-        schedule = json.loads(content)
-        return schedule
+
+        # JSON 파싱 시도
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            print("JSON 파싱 실패, 원문:", content)
+            return []  # 문자열 그대로 반환 방지
+        
+        if isinstance(parsed, dict):
+            return [parsed]
+        elif isinstance(parsed, list):
+            return parsed
+        else:
+            print("예외 반환 타입:", type(parsed))
+            return []
     except Exception as e:
         print("JSON 파싱 실패:", e)
-        return None
+        return []
+    
 
 
 # 추출한 날짜와 시간을 캘린더에서 검색하여, 이미 일정이 있다면 1시간 뒤로 추천해주는 로직
@@ -124,7 +137,6 @@ def recommend_time(user, start_str, end_str, request=None):
     if user.is_google_sync and request is not None:
         creds = get_creds_from_google_token(request)
         google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
-        print("가져온 구글 일정", google_schedules)
         if google_schedules:
             for g in google_schedules:
                 all_schedules.append({
@@ -159,3 +171,55 @@ def recommend_time(user, start_str, end_str, request=None):
         "recommended_start": proposed_start.isoformat(),
         "recommended_end": proposed_end.isoformat(),
     }
+
+#########################################################################################################
+# OCR 처리
+
+def refine_ocr (ocr_texts: list[str], model: str = "gpt-4o-mini"):
+    """
+    OCR 텍스트 배열을 받아 문맥을 파악한 '일정 단위 텍스트 요약문'을 반환
+    일정 정보(title, date, start_time, end_time, content 등)를 추출
+    """
+
+    joined_text = "\n".join(ocr_texts)
+
+    system_prompt = """
+    너는 일정 관리 비서야. 
+    사용자가 보낸 OCR 텍스트 여러 줄을 읽고, 전체 문맥을 고려해 '일정 문장'으로 자연스럽게 정리해줘.
+    형식은 다음과 같아:
+
+    규칙:
+    - 결과는 배열 한 묶음당 하나의 문장으로 반환.
+    - 텍스트가 "내일"이면 오늘 기준 다음날 날짜로 이해.
+    - 시간 표현(예: '4시부터 2시간이내', '5시부터 7시')은 실제 시작/종료 시각으로 해석.
+    - title은 자연스럽게 요약 (예: "팀 회의")
+    - 불확실한 값은 null로 두어라.
+    """
+
+    today = datetime.now().strftime("%Y-%m-%d")
+
+    user_prompt = f"""
+    오늘 날짜는 {today}입니다.
+    다음 OCR 텍스트에서 회의나 일정 정보를 감지하고, 문장으로 요약해줘:
+
+    {joined_text}
+    """
+
+    body = {
+        "model": model,
+        "messages": [
+            {"role": "system", "content": system_prompt},
+            {"role": "user", "content": user_prompt},
+        ],
+        "temperature": 0.3,
+    }
+
+    try:
+        r = requests.post(BASE, headers=_headers(), json=body, timeout=(5, 20))
+        print("헤더:", r.request.headers)
+        r.raise_for_status()
+        data = r.json()
+        result = data["choices"][0]["message"]["content"].strip()
+        return result
+    except requests.exceptions.RequestException as e:
+        return {"error": str(e)}
