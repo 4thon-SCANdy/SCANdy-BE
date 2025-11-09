@@ -69,6 +69,7 @@ INSTALLED_APPS = [
     'apps.users',
     'apps.tasks',
     'apps.calendars',
+    'apps.ocr',
     'apps.session_tokens',
     'apps.google_calendar',
 ]
@@ -218,9 +219,15 @@ SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 브라우저를 닫아도 세션 유�
 SESSION_COOKIE_SAMESITE = 'None'
 CSRF_COOKIE_SAMESITE = 'None'
 
+# 프록시 가져오기.
+SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
+
 # FRONT_ORIGIN = env.str("FRONT_ORIGIN").rstrip("/")
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/5.2/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
+
+CLOVA_OCR_URL = env("CLOVA_OCR_URL")
+CLOVA_OCR_SECRET = env("CLOVA_OCR_SECRET")
