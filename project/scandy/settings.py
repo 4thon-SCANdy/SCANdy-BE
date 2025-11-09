@@ -209,15 +209,31 @@ CSRF_TRUSTED_ORIGINS = [ #CSRF 토큰 검증 통과
   "https://www.sein0327.shop",
   "https://scandy.vercel.app",
 ]
+
+DEBUG = os.environ.get("DJANGO_DEBUG", "True") == "True"
+
+if DEBUG:
+    # --- 로컬 개발 환경 ---
+    CSRF_COOKIE_SECURE = False
+    SESSION_COOKIE_SECURE = False
+    COOKIE_SECURE = False  # (커스텀 쿠키 설정 시 참조용)
+    COOKIE_SAMESITE = "None"
+else:
+    # --- 배포 환경 ---
+    CSRF_COOKIE_SECURE = True
+    SESSION_COOKIE_SECURE = True
+    COOKIE_SECURE = True
+    COOKIE_SAMESITE = "None"
+
 CORS_ALLOW_CREDENTIALS = True #HTTP 자격증명 추가
-CSRF_COOKIE_SECURE = True #http 보안!
-SESSION_COOKIE_SECURE = True #위와 동일
+# CSRF_COOKIE_SECURE = True #http 보안!
+# SESSION_COOKIE_SECURE = True #위와 동일
 
 SESSION_COOKIE_AGE = 86400  # 초 단위: 24시간 = 86400초
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False  # 브라우저를 닫아도 세션 유지
 
-SESSION_COOKIE_SAMESITE = 'None'
-CSRF_COOKIE_SAMESITE = 'None'
+# SESSION_COOKIE_SAMESITE = 'None'
+# CSRF_COOKIE_SAMESITE = 'None'
 
 # 프록시 가져오기.
 SECURE_PROXY_SSL_HEADER = ('HTTP_X_FORWARDED_PROTO', 'https')
