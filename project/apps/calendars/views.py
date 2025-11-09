@@ -88,7 +88,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # 여기서 구글의 스케줄 리스트를 sched_list에 추가해야 함.
         # user를 받아서 google_sync라면, google calendar에서 가져온다.
         user = self.request.user
-        if user.is_google_sync:
+        # 구글 sync 여부와 tag가 있는지를 함께 검사해야 함.
+        if user.is_google_sync and not tag:
             creds = get_creds_from_google_token(self.request)
             print("GOOGLE SYNC:", user.email, user.is_google_sync)
             print("CREDS:", creds)

@@ -80,7 +80,6 @@ def get_schedules_of_user(user: User, credential, start_datetime: datetime.datet
                 events_result.append(internal_data)
             else:
                 print("Invalid event:", serializer.errors)
-        
     return events_result
 
 
