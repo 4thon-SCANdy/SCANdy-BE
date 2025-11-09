@@ -133,10 +133,13 @@ class OcrImageSerializer(serializers.Serializer):
                     for img in data.get("images", []) or []
                     for field in img.get("fields", []) or []
                 ]
+                texts = [t for t in texts if t]
+
                 return idx, {
                     "file": name,
-                    "texts": [t for t in texts if t],
-                    "raw": data,
+                    "texts": texts,                      # ★ TaskLLMView가 기대하는 키
+                    "full_text": " ".join(texts),        # (선택) 한 줄로 합친 텍스트 - 디버그/로그용
+                    # "raw": data,                       # (선택) 필요시 주석 해제
                 }
             except requests.RequestException as e:
                 return idx, {
