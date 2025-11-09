@@ -99,11 +99,25 @@ def parse_response(data):
         content = data["choices"][0]["message"]["content"]
         # json 코드블록 제거
         content = re.sub(r"```json|```", "", content).strip()
-        schedule = json.loads(content)
-        return schedule
+
+        # JSON 파싱 시도
+        try:
+            parsed = json.loads(content)
+        except json.JSONDecodeError:
+            print("JSON 파싱 실패, 원문:", content)
+            return []  # 문자열 그대로 반환 방지
+        
+        if isinstance(parsed, dict):
+            return [parsed]
+        elif isinstance(parsed, list):
+            return parsed
+        else:
+            print("예외 반환 타입:", type(parsed))
+            return []
     except Exception as e:
         print("JSON 파싱 실패:", e)
-        return None
+        return []
+    
 
 
 # 추출한 날짜와 시간을 캘린더에서 검색하여, 이미 일정이 있다면 1시간 뒤로 추천해주는 로직
