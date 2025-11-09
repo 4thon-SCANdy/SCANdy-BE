@@ -3,6 +3,7 @@ from dateutil.relativedelta import relativedelta
 
 from django.utils import timezone
 from django.db import transaction
+from django.conf import settings
 
 from rest_framework.views import APIView
 from rest_framework.response import Response
@@ -56,7 +57,9 @@ class NonGoogleRegisterView(APIView):
             value=token,
             expires=expires_at,
             httponly=True,
-            samesite='Lax',
+            # samesite='Lax',
+            secure=settings.COOKIE_SECURE,  # HTTP/S 관련 {로컬(False), 배포(True)
+            samesite=settings.COOKIE_SAMESITE, # 크로스사이트 허용
             path='/',
         )
 

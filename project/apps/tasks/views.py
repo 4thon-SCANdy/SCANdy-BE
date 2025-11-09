@@ -8,7 +8,7 @@ from apps.ocr.views import OcrView
 
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
 
-import time
+import time, json
 
 class TaskLLMView(OcrView):
 
@@ -89,7 +89,17 @@ class TaskLLMView(OcrView):
             recommend = recommend_time(user, start, end, request)
             recommends.append(recommend)
 
+        # response list용으로 변환
+        parsed_ocr = refined_ocr
+        if isinstance(refined_ocr, list) and len(refined_ocr) == 1 and isinstance(refined_ocr[0], str):
+            try:
+                parsed_ocr = json.loads(refined_ocr[0])
+                print("Response용 OCR 파싱 성공:", parsed_ocr)
+            except json.JSONDecodeError:
+                print("Response용 OCR 파싱 실패, 원본 유지")
+
+
         return Response(
-            {"ocr_result": refined_ocr, "llm_result": results, "recommendation": recommends},
+            {"ocr_result": parsed_ocr, "llm_result": results, "recommendation": recommends},
             status=status.HTTP_200_OK,
         )
