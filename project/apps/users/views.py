@@ -3,6 +3,8 @@ from django.conf import settings
 from django.http.request import HttpRequest
 from django.db import transaction
 
+from drf_spectacular.utils import extend_schema
+
 # rest_framework
 from rest_framework.response import Response
 from rest_framework.request import Request
@@ -20,9 +22,10 @@ from apps.session_tokens.services import get_user_from_non_google_token
 from apps.google_calendar.services import update_google_calendar
 
 from external.google_manager import get_google_flow
+from external.custom_swagger import TOKEN_HEADER
 
 from .models import User
-from .services import create_jwt_token, get_user_from_token
+from .services import create_jwt_token, get_user_from_token, JWTAuthentication
 from .serializers import UserSerializer
 
 @api_view(['GET'])
@@ -123,6 +126,19 @@ def google_oauth_callback(request: HttpRequest):
     request.session['google_access_token'] = access_token
 
     return Response({"token": jwt_token, "message": "login successful", "email": user.email})
+
+# 사용자의 google sync 여부를 반환.
+class IsGoogleSyncView(APIView):
+    authentication_classes = [JWTAuthentication]
+    @extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
+    def get(self, request):
+        user: User = request.user
+
+        return Response({"is_google_sync": user.is_google_sync})
 
 
 class UserFromTokenView(APIView):
