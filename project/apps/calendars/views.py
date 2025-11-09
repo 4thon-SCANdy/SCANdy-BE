@@ -139,6 +139,12 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         ],
         responses={200: ScheduleSerializer(many=True)},
     )
+    @extend_schema(
+        request=ScheduleUpdateSerializer,
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
         
@@ -158,6 +164,11 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         return Response({"detail": "일정 수정을 실패했습니다.", "error":serializer.errors},
                         status=status.HTTP_400_BAD_REQUEST)
     
+    @extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
     def destroy(self, request, *args, **kwargs):
         try:
             schedule = self.get_object()

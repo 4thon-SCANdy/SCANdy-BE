@@ -88,8 +88,8 @@ def schedule_to_google_calendar_event(schedule: Schedule) -> dict:
     return {
         'summary': schedule.title,
         'description': schedule.content,
-        'start': {'dateTime': schedule.start_datetime.isoformat(), 'timeZone': 'Asia/Seoul'},
-        'end': {'dateTime': schedule.end_datetime.isoformat(), 'timeZone': 'Asia/Seoul'},
+        'start': {'dateTime': schedule.start_datetime.isoformat(), 'timeZone': 'Asia/Seoul'} if not schedule.all_day else {'date': schedule.start_datetime.date().isoformat()},
+        'end': {'dateTime': schedule.end_datetime.isoformat(), 'timeZone': 'Asia/Seoul'} if not schedule.all_day else {'date': schedule.end_datetime.date().isoformat()},
         **({'recurrence': [f"RRULE:FREQ={schedule.repeat};UNTIL={datetime_to_zulu(schedule.until)}"]}
             if schedule.repeat != "NONE" and schedule.until else {})
     }

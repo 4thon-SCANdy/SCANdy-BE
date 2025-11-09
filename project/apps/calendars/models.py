@@ -76,4 +76,11 @@ class Schedule(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True)
     locate = models.TextField(null=True, blank=True)
 
-        
+    # 만약 all day라면 시간 데이터를 전부 없앤다.
+    def save(self, *args, **kwargs):
+        if self.all_day:
+            if self.start_datetime:
+                self.start_datetime = self.start_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+            if self.end_datetime:
+                self.end_datetime = self.end_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+        super().save(*args, **kwargs)
