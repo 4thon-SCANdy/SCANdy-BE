@@ -86,16 +86,18 @@ SPECTACULAR_SETTINGS = {
     'COMPONENT_SPLIT_REQUEST': True, # 웹 인터페이스에서 파일 업로드 기능 제공 설정
 
     # 헤더 관련
-    'SECURITY': [{'Access_Token': []}],
-    'SECURITY_SCHEMES': {
-        'Access_Token': {
-            'type': 'apiKey',
-            'in': 'header',
-            'name': 'Access-Token',  # Authorization 대신 Access-Token 사용
-            'description': (
-                "JWT Access Token 입력\n\n"
-                "예시: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`"
-            ),
+    'SECURITY': [{'token': []}],
+    'COMPONENTS': {
+        'securitySchemes': {
+            'token': {
+                'type': 'apiKey',
+                'in': 'header',
+                'name': 'token',  # Authorization 대신 Access-Token 사용
+                'description': (
+                    "JWT Access Token 입력\n\n"
+                    "예시: `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9...`"
+                ),
+            },
         },
     },
 
