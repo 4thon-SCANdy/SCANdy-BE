@@ -14,6 +14,6 @@ app_name = "tasks"
 
 urlpatterns = [
   # path('', include(router.urls)),
-  path("process/", ScheduleLLMView.as_view()),
+  path("process/", TaskLLMView.as_view()),
 
 ] + static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

@@ -245,7 +245,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             status=status.HTTP_200_OK
         )
     
-    ###################################
+    ####################################################################################################
     @extend_schema(summary="구글 일정 수정")   
     @action(detail=False, methods=["PATCH"],url_path="google_update")
     def update_google_event(self, request):
@@ -301,7 +301,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             return Response({"error": f"구글 일정 삭제 중 오류가 발생했습니다. {str(e)}"},
                             status=status.HTTP_400_BAD_REQUEST)
 
-
+############################################################################################
 class TagViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]
