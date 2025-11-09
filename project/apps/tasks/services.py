@@ -1,4 +1,4 @@
-import json, re, requests
+import json, re, requests, os
 from django.conf import settings
 from datetime import datetime, timedelta
 from apps.calendars.models import Schedule
@@ -6,7 +6,6 @@ from external.time_manager import ensure_datetime
 from django.db.models import Q
 from apps.google_calendar.services import get_schedules_of_user
 from external.google_manager import get_creds_from_google_token
-
 
 BASE = "https://api.openai.com/v1/chat/completions"
 
@@ -41,6 +40,9 @@ QUEST_SCHEMA = {
     "required": ["title", "start_datetime", "end_datetime"],
 }
 
+holiday_path = os.path.join(settings.BASE_DIR, "external", "holidays.json")
+with open(holiday_path, "r", encoding="utf-8") as f:
+    holidays = json.load(f)
 
 def _headers():
     return {
@@ -53,6 +55,9 @@ def create_schedule(input_text: str, model: str = "gpt-4o-mini"):
     today = datetime.now()
     today_str = today.strftime("%Y년 %m월 %d일")
 
+    # holiday.json을 문자열로 직렬화 (간결하게)
+    holiday_context = json.dumps(holidays, ensure_ascii=False)
+
     system_prompt = (
         f"오늘은 {today_str}이야."
         "너는 OCR 또는 자연어 입력으로부터 추출된 텍스트를 구조화하는 일정 관리 비서야. "
@@ -60,7 +65,11 @@ def create_schedule(input_text: str, model: str = "gpt-4o-mini"):
         "장소(location), 반복 주기(repeat), 종일 여부(all_day)를 찾아 JSON 형식으로 반환해줘."
         "반복 주기는 반드시 다음 중 하나로만 반환해야 해: "
         "'NONE', 'DAILY', 'WEEKLY', 'MONTHLY', 'YEARLY'."
-        "모든 날짜와 시간은 ISO 8601 형식(YYYY-MM-DDTHH:MM:SS)으로 작성하고, "
+        "모든 날짜와 시간은 ISO 8601 형식(YYYY-MM-DDTHH:MM:SS)으로 작성해."
+        "아래는 한국의 공휴일 데이터야. "
+        "만약 입력 문장에 공휴일 이름(예: 설날, 추석, 부처님 오신 날 등)이 있으면, "
+        "이 표를 참고해서 해당 날짜를 지정해. 오늘 이후의 가장 가까운 연도를 선택해야 해.\n\n"
+        f"[공휴일 데이터]\n{holiday_context}\n\n"
         "사용자가 연도를 명시하지 않았다면 오늘 날짜를 기준으로 같은 연도로 설정해."
         "사용자가 시간을 명시하지 않은 경우 all_day 값을 true로 설정해."
         "end_datetime이 없다면 start_datetime보다 1시간 뒤로 설정해."
