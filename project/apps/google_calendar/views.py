@@ -1,6 +1,10 @@
 from rest_framework import viewsets, permissions
 
+from drf_spectacular.utils import extend_schema_view, extend_schema
+
 from apps.users.services import JWTAuthentication
+
+from external.custom_swagger import TOKEN_HEADER
 
 from .models import GoogleCalendar
 from .serializers import GoogleCalendarSerializer, GoogleCalendarUpdateSerializer
@@ -8,7 +12,23 @@ from .serializers import GoogleCalendarSerializer, GoogleCalendarUpdateSerialize
 # 유저가 마음대로 google_calendar를 삭제할 수는 없게 해야 한다.
 
 # 그래서 get, update만 허용한 viewset을 제작.
-
+@extend_schema_view(
+    list=extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    ),
+    retrieve=extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    ),
+    partial_update=extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
+)
 class GoogleCalendarViewSet(viewsets.ModelViewSet):
     # user authentication class.
     authentication_classes = [JWTAuthentication]

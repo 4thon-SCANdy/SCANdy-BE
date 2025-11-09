@@ -6,6 +6,8 @@ from django.conf import settings
 from rest_framework.authentication import BaseAuthentication
 from rest_framework import exceptions
 
+from drf_spectacular.extensions import OpenApiAuthenticationExtension
+
 # models
 from .models import User
 
@@ -56,3 +58,21 @@ class JWTAuthentication(BaseAuthentication):
             raise exceptions.AuthenticationFailed('Invalid or expired token')
 
         return (user, token)
+    
+
+class JWTAuthenticationScheme(OpenApiAuthenticationExtension):
+    target_class = 'apps.users.services.JWTAuthentication'  # 문자열로 지정
+    name = 'token'  # SPECTACULAR_SETTINGS SECURITY에서 정의한 이름
+    type = 'apiKey' # token, apiKey 등
+
+    def get_security_definition(self, auto_schema):
+        """
+        OpenAPI에 표시될 security scheme을 반환
+        """
+        return {
+            'type': 'apiKey',
+            'in': 'header',
+            'name': 'token',
+            'description': "JWT Access Token 입력\n예시: `Bearer <JWT>`",
+        }
+    
