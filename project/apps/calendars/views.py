@@ -14,6 +14,7 @@ from apps.users.services import JWTAuthentication
 # 직접 작성한 class import하기.
 from external.time_manager import TimeRange, KST, ensure_datetime, to_naive_kst
 from external.google_manager import get_creds_from_google_token
+from external.custom_swagger import TOKEN_HEADER
 
 from apps.google_calendar.services import get_schedules_of_user, post_or_update_schedule_of_user, merge_scheds, delete_from_schedule
 
@@ -41,6 +42,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
     @extend_schema(
         summary="일정 목록 조회 (날짜/태그 필터링)",
         parameters=[
+            TOKEN_HEADER,
             OpenApiParameter(name="start_datetime", description="조회 시작 날짜 (예: 2025-11-01T00:00:00)", required=False),
             OpenApiParameter(name="end_datetime", description="조회 종료 날짜 (예: 2025-11-30T23:59:59)", required=False),
             OpenApiParameter(name="tag", description="태그 ID (예: 3)", required=False),
@@ -105,8 +107,15 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         
         return Response({"detail": "일정 조회에 성공했습니다.", "data": expanded_scheds}, status=status.HTTP_200_OK)
 
+    @extend_schema(
+        request=ScheduleCreateSerializer,
+        parameters=[
+            TOKEN_HEADER,
+        ],
+        responses={200: ScheduleSerializer(many=True)},
+    )
     #########################################################################################################################################
-    # 일정 생성     
+    # 일정 생성
     def create(self, request, *args, **kwargs):
         serializer = ScheduleCreateSerializer(data=request.data, context={'request': request})
         
@@ -122,7 +131,13 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         return Response({"detail": "일정 등록을 실패했습니다.", "error":serializer.errors}, 
                         status=status.HTTP_400_BAD_REQUEST)
 
-
+    @extend_schema(
+        request=ScheduleUpdateSerializer,
+        parameters=[
+            TOKEN_HEADER,
+        ],
+        responses={200: ScheduleSerializer(many=True)},
+    )
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
         
@@ -162,10 +177,9 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 {"error": f"삭제 중 오류가 발생했습니다: {str(e)}"},
                 status=status.HTTP_400_BAD_REQUEST
             )
-        
     @extend_schema(
         summary="일정 검색",
-        parameters=[OpenApiParameter(name="keyword", description="검색어", required=True)]
+        parameters=[TOKEN_HEADER, OpenApiParameter(name="keyword", description="검색어", required=True)]
     )   
     @action(detail=False, methods=["GET"])
     # title, content, tag 값을 구글, DB에서 검색하여 필터링
@@ -246,7 +260,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         )
     
     ####################################################################################################
-    @extend_schema(summary="구글 일정 수정")   
+    @extend_schema(summary="구글 일정 수정", parameters=[TOKEN_HEADER])
     @action(detail=False, methods=["PATCH"],url_path="google_update")
     def update_google_event(self, request):
         # DB에 없는 구글 이벤트 수정
@@ -278,7 +292,7 @@ class ScheduleViewSet(viewsets.ModelViewSet):
             return Response({"error": f"구글 일정 수정 중 오류가 발생했습니다. {str(e)}"},
                             status=status.HTTP_400_BAD_REQUEST)
         
-    @extend_schema(summary="구글 일정 삭제")   
+    @extend_schema(summary="구글 일정 삭제", parameters=[TOKEN_HEADER])   
     @action(detail=False, methods=["DELETE"], url_path="google_delete")
     def delete_google_event(self, request):
         # DB에 없는 구글 이벤트 삭제
@@ -308,12 +322,17 @@ class TagViewSet(viewsets.ModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     
     serializer_class = TagSerializer
-    
+
     def get_queryset(self):
         return Tag.objects.filter(
             calendar=self.request.user.calendar
         )
-    
+    @extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+        responses={200: TagSerializer(many=True)},
+    )
     def list(self, request, *args, **kwargs):
         queryset = self.get_queryset()
         serializer = self.get_serializer(queryset, many=True)
@@ -322,6 +341,13 @@ class TagViewSet(viewsets.ModelViewSet):
         return Response({"detail": "태그 조회에 성공했습니다.",
                          "count": len(tags), "data": tags}, status=status.HTTP_200_OK)
     
+    @extend_schema(
+        request=TagCreateSerializer,
+        parameters=[
+            TOKEN_HEADER,
+        ],
+        responses={200: TagSerializer(many=True)},
+    )
     def create(self, request, *args, **kwargs):
         serializer = TagCreateSerializer(data=request.data, context={'request': request})
         
@@ -332,6 +358,13 @@ class TagViewSet(viewsets.ModelViewSet):
                 ,status=status.HTTP_201_CREATED)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    @extend_schema(
+        request=TagUpdateSerializer,
+        parameters=[
+            TOKEN_HEADER,
+        ],
+        responses={200: TagSerializer(many=True)},
+    )
     def update(self, request, *args, **kwargs):
         tag = self.get_object()
         
@@ -349,6 +382,11 @@ class TagViewSet(viewsets.ModelViewSet):
                 , status=status.HTTP_200_OK)
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
     
+    @extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
     def destroy(self, request, *args, **kwargs):
         tag = self.get_object()
         tag_id = tag.id
