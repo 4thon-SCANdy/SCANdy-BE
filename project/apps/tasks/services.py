@@ -1,16 +1,12 @@
-# from .models import Task, Image
-
-# def process_task_from_image(images, schedule=None):
-#   # 이미지들을 일정으로 처리하고, Task 반환
-#   pass
-
-
 import json, re, requests
 from django.conf import settings
 from datetime import datetime, timedelta
 from apps.calendars.models import Schedule
 from external.time_manager import ensure_datetime
 from django.db.models import Q
+from apps.google_calendar.services import get_schedules_of_user
+from external.google_manager import get_creds_from_google_token
+
 
 BASE = "https://api.openai.com/v1/chat/completions"
 
@@ -112,27 +108,54 @@ def parse_response(data):
 
 
 # 추출한 날짜와 시간을 캘린더에서 검색하여, 이미 일정이 있다면 1시간 뒤로 추천해주는 로직
-def recommend_time(user, start_str, end_str):
+def recommend_time(user, start_str, end_str, request=None):
     start_dt = ensure_datetime(start_str)
     end_dt = ensure_datetime(end_str)
 
+    # 1. DB 일정 검색
     overlapping = Schedule.objects.filter(
         calendar=user.calendar,
         start_datetime__lt=end_dt,
         end_datetime__gt=start_dt,
     )
 
-    if overlapping.exists():
-        start_dt += timedelta(hours=1)
-        end_dt += timedelta(hours=1)
-        return {
-            "detail": "겹치는 일정이 있어 1시간 뒤로 추천합니다.",
-            "recommended_start": start_dt.isoformat(),
-            "recommended_end": end_dt.isoformat(),
-        }
+    # 2. 구글 일정도 검색
+    all_schedules = list(overlapping)
+    if user.is_google_sync and request is not None:
+        creds = get_creds_from_google_token(request)
+        google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
+        print("가져온 구글 일정", google_schedules)
+        if google_schedules:
+            for g in google_schedules:
+                all_schedules.append({
+                    "start_datetime": ensure_datetime(g["start_datetime"]),
+                    "end_datetime": ensure_datetime(g["end_datetime"])
+                })
+        
+    # 3. start, end time 정렬
+    all_schedules.sort(key=lambda s: s["start_datetime"])
+
+    # 4. 겹치는 시간 피하기
+    proposed_start = start_dt
+    proposed_end = end_dt
+
+    for s in all_schedules:
+        s_start = s["start_datetime"]
+        s_end = s["end_datetime"]
+
+        # 겹친다면 end 이후로 미루기 
+        # 목표 일정이 기존 일정 시작전에 끝나거나, 목표 일정이 기존 일정 끝난 뒤에 시작해야 함.
+        if not (proposed_end <= s_start or proposed_start >= s_end):
+            proposed_start = s_end
+            proposed_end = proposed_start + (end_dt - start_dt)
+
+    if proposed_start != start_dt:
+        detail_msg = "겹치는 일정이 있어 다음 가능한 시간으로 조정했습니다."
     else:
-        return {
-            "detail": "겹치는 일정이 없습니다.",
-            "recommended_start": start_dt.isoformat(),
-            "recommended_end": end_dt.isoformat(),
-        }
+        detail_msg = "겹치는 일정이 없습니다."
+
+    return {
+        "detail": detail_msg,
+        "recommended_start": proposed_start.isoformat(),
+        "recommended_end": proposed_end.isoformat(),
+    }
