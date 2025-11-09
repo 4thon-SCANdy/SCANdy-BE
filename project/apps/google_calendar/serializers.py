@@ -94,6 +94,9 @@ class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
         if google_calendar_id is None:
             raise serializers.ValidationError("google_calendar_id is required in context.")
 
+        # 만약 date이라면 is_all_day로 처리해야 함.
+        is_all_day = True if data['start'].get('date') else False
+
         # start_datetime, end_datetime 처리
         start_raw = data['start'].get('dateTime') or data['start'].get('date')
         end_raw = data['end'].get('dateTime') or data['end'].get('date')
@@ -133,6 +136,7 @@ class GoogleCalendarEventToScheduleSerializer(serializers.Serializer):
             'repeat': repeat,
             'until': to_naive_kst(until).isoformat() if until else None,
             'colorId': colorId if colorId else 0,
+            'all_day': is_all_day,
         }
         return internal
     
