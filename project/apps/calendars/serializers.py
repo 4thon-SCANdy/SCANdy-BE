@@ -8,7 +8,7 @@ from external.time_manager import KST
 class TagSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        fields = '__all__'
+        exclude = ('calendar',)
 
 class TagCreateSerializer(serializers.ModelSerializer):    
     class Meta:
@@ -26,7 +26,7 @@ class TagCreateSerializer(serializers.ModelSerializer):
 class TagUpdateSerializer(serializers.ModelSerializer):
     class Meta:
         model = Tag
-        exclude = ('id', 'calendar',)
+        exclude = ('id', 'calendar')
 
     def update(self, instance, validated_data):        
         for attr, value in validated_data.items():
