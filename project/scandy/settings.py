@@ -219,7 +219,7 @@ if DEBUG:
     CSRF_COOKIE_SECURE = False
     SESSION_COOKIE_SECURE = False
     COOKIE_SECURE = False  # (커스텀 쿠키 설정 시 참조용)
-    COOKIE_SAMESITE = "None"
+    COOKIE_SAMESITE = "Lax"
 else:
     # --- 배포 환경 ---
     CSRF_COOKIE_SECURE = True
