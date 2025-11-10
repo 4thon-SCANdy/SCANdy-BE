@@ -83,6 +83,13 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # datetime으로 파싱.
         start_datetime = ensure_datetime(start_datetime)
         end_datetime = ensure_datetime(end_datetime)
+
+        # start가 end보다 크면 예외 처리
+        if start_datetime > end_datetime:
+            return Response(
+                {"error": "시작일은 종료일보다 이전이어야 합니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
            
         serializer = ScheduleSerializer(queryset, many=True)
         
