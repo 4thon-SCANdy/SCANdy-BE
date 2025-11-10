@@ -192,6 +192,12 @@ USE_TZ = False
 STATIC_URL = 'static/'
 STATIC_ROOT = os.path.join(BASE_DIR, 'static')
 
+from corsheaders.defaults import default_headers
+
+CORS_ALLOW_HEADERS = list(default_headers) + [
+    'token',   # 프론트 커스텀 토큰 통과 위해 추가
+]
+
 CORS_ALLOWED_ORIGINS = [ #API 호출할 수 있는 출처 목록
   "http://127.0.0.1:8000",
   "https://127.0.0.1:8000",
