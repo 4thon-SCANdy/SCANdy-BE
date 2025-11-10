@@ -4,6 +4,10 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from datetime import datetime, timedelta
 import unicodedata
 
+from django.utils.timezone import make_naive
+import dateutil.parser
+
+
 
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
@@ -79,6 +83,13 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # datetime으로 파싱.
         start_datetime = ensure_datetime(start_datetime)
         end_datetime = ensure_datetime(end_datetime)
+
+        # start가 end보다 크면 예외 처리
+        if start_datetime > end_datetime:
+            return Response(
+                {"error": "시작일은 종료일보다 이전이어야 합니다."},
+                status=status.HTTP_400_BAD_REQUEST
+            )
            
         serializer = ScheduleSerializer(queryset, many=True)
         
@@ -283,9 +294,36 @@ class ScheduleViewSet(viewsets.ModelViewSet):
                 google_event_id=google_event_id,  # 기존 일정 ID 지정
             )
 
+            # 구글 응답 DB 필드에 맞게 매핑
+            start_raw = result.get("start", {}).get("dateTime")
+            end_raw = result.get("end", {}).get("dateTime")
+
+            if start_raw and end_raw:
+                start_dt = make_naive(dateutil.parser.isoparse(start_raw))
+                end_dt = make_naive(dateutil.parser.isoparse(end_raw))
+            else:
+                start_dt = end_dt = None
+
+            defaults = {
+                "title": result.get("summary"),
+                "content": result.get("description") or None,
+                "start_datetime": start_dt,
+                "end_datetime": end_dt,
+                "repeat": "NONE",
+                "all_day": False,
+                "locate": None,
+            }
+
+            # DB 저장
+            schedule, created = Schedule.objects.update_or_create(
+                calendar=request.user.calendar,
+                google_event_id=google_event_id,
+                defaults=defaults,
+            )
+
             return Response({
                 "detail": "구글 일정이 수정되었습니다.",
-                "data": result
+                "data": ScheduleSerializer(schedule).data
             }, status=status.HTTP_200_OK)
 
         except Exception as e:
