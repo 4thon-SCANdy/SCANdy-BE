@@ -6,5 +6,6 @@ urlpatterns = [
     path('google/oauth_callback/', views.google_oauth_callback, name='google_oauth_callback'),
     path('user/get_user_from_token/', views.UserFromTokenView.as_view(), name='user_from_token'),
     path('google/is_google_sync/', views.IsGoogleSyncView.as_view(), name="is_google_sync"),
+    path('google/login/', views.google_login, name='google_login'),
 ]
 
