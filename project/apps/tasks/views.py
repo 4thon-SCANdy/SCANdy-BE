@@ -1,11 +1,14 @@
 from rest_framework.views import APIView
+from rest_framework import viewsets
 from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
+
 from apps.users.services import JWTAuthentication
 from apps.ocr.views import OcrView
-from apps.tasks.models import Task
+from .models import Task
+from .seriallizers import TaskSerializer
 
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
 
@@ -115,3 +118,41 @@ class TaskLLMView(OcrView):
             {"task_id": task_id, "ocr_result": parsed_ocr, "llm_result": results, "recommendation": recommends},
             status=status.HTTP_200_OK,
         )
+
+# /task/task_id → image 링크 , llm, ocr 분석결과
+class TaskViewSet(viewsets.ModelViewSet):
+    authentication_classes = [JWTAuthentication]
+    serializer_class = TaskSerializer
+    queryset = Task.objects.all()
+
+    def list(self, request, *args, **kwargs):
+        queryset = self.get_queryset()
+
+        # list는 여러 개 보여주는 부분
+        return Response(
+            {"detail": "Task 조회에 성공했습니다."},
+            status=status.HTTP_200_OK
+        )
+
+    def retrieve(self, request, *args, **kwargs):
+        task = self.get_object()  # Task instance 하나 가져오기
+
+        serializer = self.get_serializer(task)
+
+        data = [{
+            "ocr_result": getattr(task, "ocr_result", None),
+            "llm_result": getattr(task, "llm_result", None)
+        }]
+        
+        image_urls = []
+        for image_obj in task.images.all():
+            if image_obj.image:
+                abs_url = request.build_absolute_uri(image_obj.image.url)
+                image_urls.append(abs_url)
+
+        data.append({"image_urls":image_urls})
+
+        return Response({
+            "detail": f"Task {task.id} 조회를 성공했습니다",
+            "data": data
+        }, status=status.HTTP_200_OK)
