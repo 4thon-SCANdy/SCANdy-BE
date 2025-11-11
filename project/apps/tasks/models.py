@@ -2,7 +2,7 @@ from django.db import models
 from apps.calendars.models import Schedule
 
 def image_upload_path(instance: 'Image', filename: str) -> str:
-    return f"tasks/{instance.task.id}/{filename}"
+    return f"task_images/{instance.task.id}/{filename}"
 
 class Task(models.Model):
 		id = models.AutoField(primary_key=True)

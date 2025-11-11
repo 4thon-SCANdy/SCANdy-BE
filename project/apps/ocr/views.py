@@ -24,7 +24,7 @@ class OcrView(APIView):
             )
 
         # 2) 직렬화/검증
-        serializer = OcrImageSerializer(data={"images": files})
+        serializer = OcrImageSerializer(data={"images": files}, context={"request": request})
         serializer.is_valid(raise_exception=True)
 
         # 3) 처리 (serializer.create 내부에서 CLOVA 병렬 호출)

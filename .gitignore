@@ -8,3 +8,5 @@ project/security/*.json
 project/.env
 
 project/static/*
+
+project/media

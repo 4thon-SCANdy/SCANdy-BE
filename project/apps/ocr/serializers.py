@@ -7,6 +7,10 @@ import concurrent.futures
 from rest_framework import serializers
 from django.conf import settings
 
+from apps.tasks.models import Image, Task
+from apps.calendars.models import Schedule
+from django.db import transaction
+
 # MIME → 확장자 매핑
 MIME_EXT = {
     "image/jpeg": "jpg",
@@ -97,6 +101,7 @@ class OcrImageSerializer(serializers.Serializer):
 
     def create(self, validated_data):
         files = validated_data["images"]
+        user = self.context["request"].user
 
         api_url = getattr(settings, "CLOVA_OCR_URL", None)
         secret  = getattr(settings, "CLOVA_OCR_SECRET", None)
@@ -105,13 +110,24 @@ class OcrImageSerializer(serializers.Serializer):
 
         headers = _clova_headers(secret)
 
-        # 파일 → (index, name, fmt, b64) 전처리 (I/O는 메인 스레드에서)
-        items = []
-        for idx, f in enumerate(files):
-            name = getattr(f, "name", f"image_{idx+1}.jpg")
-            fmt  = _ext_from_file(f)
-            b64  = _b64_from_file(f)
-            items.append((idx, name, fmt, b64))
+        # 하나의 Task를 만들어서 이미지들을 묶어줌 (optional)
+        with transaction.atomic():
+            task = Task.objects.create()
+
+            items = []
+            for idx, f in enumerate (files):
+                # 1) 이미지 저장 (유저, Task 연결)
+                img_instance = Image.objects.create(
+                    task=task,
+                    task_image=f,
+                )
+
+                # 2) 파일 형태에 따른 전처리
+                # 파일 → (index, name, fmt, b64) 전처리 (I/O는 메인 스레드에서)
+                name = getattr(f, "name", f"image_{idx+1}.jpg")
+                fmt  = _ext_from_file(f)
+                b64  = _b64_from_file(f)
+                items.append((idx, name, fmt, b64))
 
         results = [None] * len(items)
 
@@ -153,4 +169,4 @@ class OcrImageSerializer(serializers.Serializer):
             for idx, res in ex.map(work, items):
                 results[idx] = res
 
-        return {"results": results}
+        return {"task_id": task.id, "results": results}
