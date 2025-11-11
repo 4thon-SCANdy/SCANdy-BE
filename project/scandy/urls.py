@@ -17,6 +17,8 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include
 from drf_spectacular.views import SpectacularJSONAPIView, SpectacularRedocView, SpectacularSwaggerView
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 urlpatterns = [
@@ -33,3 +35,6 @@ urlpatterns = [
     path('api/redoc/', SpectacularRedocView.as_view(url_name='schema-json'), name='redoc'),
     path("api/docs/", SpectacularSwaggerView.as_view(url_name="schema-json"), name="swagger-ui"),
 ]
+
+if settings.DEBUG:  # 로컬에서만
+    urlpatterns += static(settings.MEDIA_URL, document_root=settings.MEDIA_ROOT)

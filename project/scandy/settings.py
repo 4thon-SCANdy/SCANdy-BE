@@ -257,3 +257,6 @@ DEFAULT_AUTO_FIELD = 'django.db.models.BigAutoField'
 
 CLOVA_OCR_URL = env("CLOVA_OCR_URL")
 CLOVA_OCR_SECRET = env("CLOVA_OCR_SECRET")
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

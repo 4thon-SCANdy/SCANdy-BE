@@ -9,4 +9,4 @@ project/.env
 
 project/static/*
 
-project/task_images
+project/media
