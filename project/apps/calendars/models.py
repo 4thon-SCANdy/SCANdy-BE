@@ -67,8 +67,8 @@ class Schedule(models.Model):
 		Task,
 		on_delete=models.CASCADE,
 		related_name='schedules',
-				null=True,
-				blank=True,
+        null=True,
+        blank=True,
 	)
     google_event_id = models.CharField(max_length=255, null=True, blank=True)
     title = models.CharField(max_length=200, null=False)
