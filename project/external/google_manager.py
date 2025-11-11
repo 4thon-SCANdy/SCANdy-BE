@@ -27,7 +27,7 @@ def get_google_flow(request: HttpRequest) -> InstalledAppFlow:
         flow.redirect_uri = f"{scheme}://{request.get_host()}/{REDIRECT_CALLBACK_PATH}"
     else:
         flow.redirect_uri = settings.GOOGLE_REDIRECT_URL
-    print(flow.redirect_uri)
+    print("구글 리다이렉트", flow.redirect_uri)
     return flow
 
 # google token으로부터 creds를 가져온다.
