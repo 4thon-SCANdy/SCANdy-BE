@@ -6,6 +6,7 @@ from rest_framework.permissions import IsAuthenticated
 from apps.users.services import JWTAuthentication
 from apps.ocr.views import OcrView
 from apps.tasks.models import Task
+from external.dummy_serializers import DummySerializer
 
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
 
@@ -15,6 +16,7 @@ class TaskLLMView(OcrView):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    serializer_class = DummySerializer
 
     def post(self, request, *args, **kwargs): 
 

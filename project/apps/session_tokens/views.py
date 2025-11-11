@@ -15,9 +15,13 @@ from .services import make_token, hash_token, get_user_from_non_google_token
 from apps.users.serializers import UserSerializer
 from apps.users.models import User
 from apps.users.services import create_jwt_token
+from external.dummy_serializers import DummySerializer
+
 
 # 구글 연동 안하는 사용자 회원가입.
 class NonGoogleRegisterView(APIView):
+    serializer_class = DummySerializer
+
     def post(self, request):
         response = Response({"message": "register success."})
         
@@ -68,6 +72,8 @@ class NonGoogleRegisterView(APIView):
 
 # 로그인 뷰
 class NonGoogleLoginView(APIView):
+    serializer_class = DummySerializer
+
     def post(self, request):
         user = get_user_from_non_google_token(request)
         jwt_token = create_jwt_token(user)

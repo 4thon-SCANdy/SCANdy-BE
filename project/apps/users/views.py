@@ -20,6 +20,7 @@ from apps.session_tokens.services import get_user_from_non_google_token
 from apps.google_calendar.services import update_google_calendar
 
 from external.google_manager import get_google_flow
+from external.dummy_serializers import DummySerializer
 
 from .models import User
 from .services import create_jwt_token, get_user_from_token
@@ -27,6 +28,8 @@ from .serializers import UserSerializer
 
 @api_view(['GET'])
 def google_auth_url(request: HttpRequest):
+    serializer_class = DummySerializer
+
     # google flow 생성.
     flow = get_google_flow(request)
 
@@ -43,6 +46,8 @@ def google_auth_url(request: HttpRequest):
 
 @api_view(['GET'])
 def google_oauth_callback(request: HttpRequest):
+    serializer_class = DummySerializer
+
     # google로부터 code와 state를 받음.
     code = request.GET.get('code')
     state = request.GET.get('state')
