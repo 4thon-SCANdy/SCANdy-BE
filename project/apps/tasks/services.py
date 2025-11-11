@@ -154,15 +154,16 @@ def recommend_time(user, start_str, end_str, request=None):
                 })
         
     # 3. start, end time 정렬
-    all_schedules.sort(key=lambda s: s["start_datetime"])
+    all_schedules.sort(key=lambda s: s.start_datetime)
+
 
     # 4. 겹치는 시간 피하기
     proposed_start = start_dt
     proposed_end = end_dt
 
     for s in all_schedules:
-        s_start = s["start_datetime"]
-        s_end = s["end_datetime"]
+        s_start = s.start_datetime
+        s_end = s.end_datetime
 
         # 겹친다면 end 이후로 미루기 
         # 목표 일정이 기존 일정 시작전에 끝나거나, 목표 일정이 기존 일정 끝난 뒤에 시작해야 함.

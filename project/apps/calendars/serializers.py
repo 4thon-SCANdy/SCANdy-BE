@@ -39,28 +39,10 @@ class TagUpdateSerializer(serializers.ModelSerializer):
 
 class ScheduleSerializer(serializers.ModelSerializer):
     tag = TagSerializer(required=False)
-    images = serializers.SerializerMethodField()
     class Meta:
         model = Schedule
         fields = '__all__'
-
-    # 이미지 url 리스트 반환
-    def get_images(self, obj):
-        request = self.context.get('request')
-        urls = []
-
-        for img in obj.images.all():
-            if img.task_image:
-                # 절대 URL로 변환
-                if request is not None:
-                    url = request.build_absolute_uri(img.task_image.url)
-                else:
-                    url = img.task_image.url
-                urls.append(url)
-
-        return urls
         
-
     # 공통 태그 처리 로직
     def _handle_tag(self, schedule, tag_data, calendar):
         if not tag_data:
@@ -75,8 +57,6 @@ class ScheduleSerializer(serializers.ModelSerializer):
         
 
 class ScheduleCreateSerializer(ScheduleSerializer): 
-
-    task_id = serializers.IntegerField(required=False, allow_null=True)
     class Meta:
         model = Schedule
         exclude = ('id', 'calendar', 'created_at', 'updated_at')
@@ -87,21 +67,25 @@ class ScheduleCreateSerializer(ScheduleSerializer):
     def create(self, validated_data):
         user = self.context['request'].user
         tag_data = validated_data.pop("tag", None)
-        task_id = validated_data.pop("task_id", None)
         schedule = Schedule.objects.create(
             calendar=user.calendar,
             **validated_data
         )
 
-        self._handle_tag(schedule, tag_data, user.calendar)
-
+        task_id = self.initial_data.get("task_id")
+        task_obj = None
         if task_id:
             try:
-                task = Task.objects.get(id=task_id)
-                task.images.update(schedule=schedule)
+                task_obj = Task.objects.get(id=task_id)
             except Task.DoesNotExist:
-                print(f"Task {task_id} 가 없어 일정 연결을 하지 않고 넘어갑니다.")
-                
+                pass  # task_id가 유효하지 않으면 무시
+
+        if task_obj:
+            schedule.task = task_obj
+            schedule.save(update_fields=["task"])
+        
+        self._handle_tag(schedule, tag_data, user.calendar)
+    
         return schedule
     
 class ScheduleUpdateSerializer(ScheduleSerializer):
