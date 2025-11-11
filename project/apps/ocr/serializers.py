@@ -119,7 +119,7 @@ class OcrImageSerializer(serializers.Serializer):
                 # 1) 이미지 저장 (유저, Task 연결)
                 img_instance = Image.objects.create(
                     task=task,
-                    task_image=f,
+                    image=f,
                 )
 
                 # 2) 파일 형태에 따른 전처리
