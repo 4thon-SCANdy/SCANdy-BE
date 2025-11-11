@@ -164,10 +164,21 @@ class TaskViewSet(viewsets.ModelViewSet):
 
         serializer = self.get_serializer(task)
 
+        ocr_result = getattr(task, "ocr_result", None)
+        llm_result = json.loads(getattr(task, "llm_result", None))
+
+        # 개행 제거
+        if isinstance(ocr_result, str):
+            ocr_result = ocr_result.replace("\n", " ")
+        if isinstance(llm_result, str):
+            llm_result = llm_result.replace("\n", " ")
+
         data = [{
-            "ocr_result": getattr(task, "ocr_result", None),
-            "llm_result": getattr(task, "llm_result", None)
+            "ocr_result": ocr_result,
+            "llm_result": llm_result
         }]
+
+
         
         image_urls = []
         for image_obj in task.images.all():
