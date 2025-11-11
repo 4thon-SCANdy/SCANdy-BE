@@ -67,6 +67,7 @@ class Schedule(models.Model):
 		Task,
 		on_delete=models.CASCADE,
 		related_name='schedules',
+        db_column='task_id',
         null=True,
         blank=True,
 	)
