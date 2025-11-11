@@ -19,7 +19,7 @@ class TaskLLMView(OcrView):
 
         # 1) 이미지 업로드 ->  ocr 처리 수행
         ocr_response = super().post(request, *args, **kwargs)
-
+        print("ocr_responses:", ocr_response)
         ocr_results = ocr_response.data.get("results", [])
         if not ocr_results:
             return Response(
