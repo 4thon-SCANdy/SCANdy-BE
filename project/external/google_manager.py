@@ -21,8 +21,13 @@ def get_google_flow(request: HttpRequest) -> InstalledAppFlow:
         scopes=SCOPES
     )
 
-    scheme = "https" if request.is_secure() else "http"
-    flow.redirect_uri = f"{scheme}://{request.get_host()}/{REDIRECT_CALLBACK_PATH}"
+    # 만약 debug라면 그대로, debug가 아니라면 redirect url사용.
+    if settings.DEBUG:
+        scheme = "https" if request.is_secure() else "http"
+        flow.redirect_uri = f"{scheme}://{request.get_host()}/{REDIRECT_CALLBACK_PATH}"
+    else:
+        flow.redirect_uri = settings.GOOGLE_REDIRECT_URL
+    print(flow.redirect_uri)
     return flow
 
 # google token으로부터 creds를 가져온다.

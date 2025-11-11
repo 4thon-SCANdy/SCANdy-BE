@@ -25,6 +25,8 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 environ.Env.read_env(os.path.join(BASE_DIR, '.env'))
 
 # 구글 인증키(credentials.json)파일 설정.
+GOOGLE_REDIRECT_URL = env("GOOGLE_REDIRECT_URL")
+
 GOOGLE_OAUTH_JSON = BASE_DIR / "security" / "credentials.json"
 
 GOOGLE_CLIENT_ID = env("GOOGLE_CLIENT_ID")
