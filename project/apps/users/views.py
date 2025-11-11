@@ -30,8 +30,8 @@ from .services import create_jwt_token, get_user_from_token, JWTAuthentication
 from .serializers import UserSerializer, GoogleLoginSerializer
 
 @api_view(['GET'])
+@extend_schema(request=DummySerializer)
 def google_auth_url(request: HttpRequest):
-    serializer_class = DummySerializer
 
     # google flow 생성.
     flow = get_google_flow(request)
@@ -136,8 +136,8 @@ def google_login(request: HttpRequest):
 
 ####################### 폐기 ########################
 @api_view(['GET'])
+@extend_schema(request=DummySerializer)
 def google_oauth_callback(request: HttpRequest):
-    serializer_class = DummySerializer
 
     # google로부터 code와 state를 받음.
     code = request.GET.get('code')
@@ -235,6 +235,8 @@ class IsGoogleSyncView(APIView):
 
 
 class UserFromTokenView(APIView):
+    
+    @extend_schema(request=DummySerializer)
     def post(self, request):
         token = request.data.get("token")
         if not token:
