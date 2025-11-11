@@ -72,6 +72,18 @@ class ScheduleCreateSerializer(ScheduleSerializer):
             **validated_data
         )
 
+        task_id = self.initial_data.get("task_id")
+        task_obj = None
+        if task_id:
+            try:
+                task_obj = Task.objects.get(id=task_id)
+            except Task.DoesNotExist:
+                pass  # task_id가 유효하지 않으면 무시
+
+        if task_obj:
+            schedule.task = task_obj
+            schedule.save(update_fields=["task"])
+        
         self._handle_tag(schedule, tag_data, user.calendar)
     
         return schedule
