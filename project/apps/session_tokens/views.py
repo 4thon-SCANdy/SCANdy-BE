@@ -45,7 +45,7 @@ class NonGoogleRegisterView(APIView):
         
         token = make_token()
         token_hash = hash_token(token)
-        expires_at = timezone.now() + relativedelta(hours=1)  # 1년으로 해도 되지만 우선 1시간으로 설정.
+        expires_at = timezone.now() + relativedelta(days=1)  # 1년으로 해도 되지만 우선 1시간으로 설정.
     
         # 구글 사용자 아닌 User를 새로 만듬.
         user: User = UserSerializer().create({"is_google_sync": False})
