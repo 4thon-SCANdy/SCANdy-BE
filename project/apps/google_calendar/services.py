@@ -85,14 +85,28 @@ def get_schedules_of_user(user: User, credential, start_datetime: datetime.datet
 
 # schedule을 google calendar event 형식으로 만듬.
 def schedule_to_google_calendar_event(schedule: Schedule) -> dict:
+    recurrence_rule = None
+    if schedule.repeat != "NONE":
+        recurrence_rule = f"RRULE:FREQ={schedule.repeat}"
+        if schedule.until:
+            recurrence_rule += f";UNTIL={datetime_to_zulu(schedule.until)}"
+
     return {
         'summary': schedule.title,
         'description': schedule.content,
-        'start': {'dateTime': schedule.start_datetime.isoformat(), 'timeZone': 'Asia/Seoul'} if not schedule.all_day else {'date': schedule.start_datetime.date().isoformat()},
-        'end': {'dateTime': schedule.end_datetime.isoformat(), 'timeZone': 'Asia/Seoul'} if not schedule.all_day else {'date': schedule.end_datetime.date().isoformat()},
-        **({'recurrence': [f"RRULE:FREQ={schedule.repeat};UNTIL={datetime_to_zulu(schedule.until)}"]}
-            if schedule.repeat != "NONE" and schedule.until else {})
+        'start': (
+            {'dateTime': schedule.start_datetime.isoformat(), 'timeZone': 'Asia/Seoul'}
+            if not schedule.all_day
+            else {'date': schedule.start_datetime.date().isoformat()}
+        ),
+        'end': (
+            {'dateTime': schedule.end_datetime.isoformat(), 'timeZone': 'Asia/Seoul'}
+            if not schedule.all_day
+            else {'date': schedule.end_datetime.date().isoformat()}
+        ),
+        **({'recurrence': [recurrence_rule]} if recurrence_rule else {}),
     }
+
     
 def make_google_event_dict(sched: dict):
     start_val = sched.get("start_datetime")

@@ -19,7 +19,7 @@ from google.auth.transport import requests as google_request
 
 # externals
 from apps.session_tokens.services import get_user_from_non_google_token
-from apps.google_calendar.services import update_google_calendar
+from apps.google_calendar.services import update_google_calendar, post_or_update_schedule_of_user
 
 from external.google_manager import get_google_flow
 from external.dummy_serializers import DummySerializer
@@ -86,9 +86,13 @@ def google_login(request: HttpRequest):
     
     # 쿠키 관리를 위해 response 객체를 생성.
     response: Response = Response()
+
+    # 이미 있던 사용자인지.
+    is_existing_user = False
     
     try:
         user: User = get_user_from_non_google_token(request)
+        is_existing_user = True
         
         # 만약 이미 user가 있고, is_google_sync가 아니라면 새로 구글 연동 user로 업데이트함.
         if user and not user.is_google_sync:
@@ -114,6 +118,7 @@ def google_login(request: HttpRequest):
             response.delete_cookie('non_google_token', path='/')
             
             user = serializer.save()
+            
         # 이미 google_sync라면 일반 google_user validation으로 넘어간다.
         else:
             user = None
@@ -123,9 +128,16 @@ def google_login(request: HttpRequest):
     if not user:
         user = User.get_or_create_google_user(id_info, refresh_token)
 
-    if user:
-        # user calendar를 업데이트 한다.
-        update_google_calendar(user, creds)
+    # user calendar를 업데이트 한다.
+    update_google_calendar(user, creds)
+
+    # 만약 원래 있던 user였다면 구글 캘린더를 업데이트 한다.
+    if is_existing_user:
+        print("existed")
+        scheds = user.calendar.schedules.all()
+        for sched in scheds:
+            post_or_update_schedule_of_user(user, creds, sched)
+
 
     # 세션에 로그인 상태 저장, jwt 토큰 발급.
     jwt_token = create_jwt_token(user)
@@ -173,9 +185,13 @@ def google_oauth_callback(request: HttpRequest):
     
     # 쿠키 관리를 위해 response 객체를 생성.
     response: Response = Response()
+   
+    # 이미 있던 사용자인지.
+    is_existing_user = False
     
     try:
         user: User = get_user_from_non_google_token(request)
+        is_existing_user = True
         
         # 만약 이미 user가 있고, is_google_sync가 아니라면 새로 구글 연동 user로 업데이트함.
         if user and not user.is_google_sync:
@@ -201,6 +217,7 @@ def google_oauth_callback(request: HttpRequest):
             response.delete_cookie('non_google_token', path='/')
             
             user = serializer.save()
+            
         # 이미 google_sync라면 일반 google_user validation으로 넘어간다.
         else:
             user = None
@@ -210,15 +227,23 @@ def google_oauth_callback(request: HttpRequest):
     if not user:
         user = User.get_or_create_google_user(id_info, refresh_token)
 
-    if user:
-        # user calendar를 업데이트 한다.
-        update_google_calendar(user, creds)
+    # user calendar를 업데이트 한다.
+    update_google_calendar(user, creds)
+
+    # 만약 원래 있던 user였다면 구글 캘린더를 업데이트 한다.
+    if is_existing_user:
+        print("existed")
+        scheds = user.calendar.schedules.all()
+        for sched in scheds:
+            post_or_update_schedule_of_user(user, creds, sched)
+
 
     # 세션에 로그인 상태 저장, jwt 토큰 발급.
     jwt_token = create_jwt_token(user)
     request.session['google_access_token'] = access_token
 
     return Response({"token": jwt_token, "message": "login successful", "email": user.email})
+
 
 # 사용자의 google sync 여부를 반환.
 class IsGoogleSyncView(APIView):
