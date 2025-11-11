@@ -7,13 +7,14 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.users.services import JWTAuthentication
 from apps.ocr.views import OcrView
+
 from .models import Task
 from .seriallizers import TaskSerializer, TaskCreateSerializer
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
-
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
 
+from external.dummy_serializers import DummySerializer
 from external.custom_swagger import TOKEN_HEADER
 
 import time, json
@@ -22,6 +23,7 @@ class TaskLLMView(OcrView):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
+    
     @extend_schema(
         request=TaskCreateSerializer,
         parameters=[TOKEN_HEADER],

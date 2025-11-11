@@ -1,5 +1,6 @@
 # django
 from .serializers import OcrImageSerializer
+from external.dummy_serializers import DummySerializer
 
 # rest_framework
 from rest_framework.response import Response
@@ -7,9 +8,12 @@ from rest_framework.views import APIView
 from rest_framework.parsers import MultiPartParser, FormParser
 from rest_framework import status
 
+from drf_spectacular.utils import extend_schema
+
 class OcrView(APIView):
     parser_classes = [MultiPartParser, FormParser]
-
+    
+    @extend_schema(request=DummySerializer)
     def post(self, request):
         # 1) 파일 수집 (images 키 기준)
         files = request.FILES.getlist("images")

@@ -22,6 +22,7 @@ from apps.session_tokens.services import get_user_from_non_google_token
 from apps.google_calendar.services import update_google_calendar
 
 from external.google_manager import get_google_flow
+from external.dummy_serializers import DummySerializer
 from external.custom_swagger import TOKEN_HEADER
 
 from .models import User
@@ -29,7 +30,9 @@ from .services import create_jwt_token, get_user_from_token, JWTAuthentication
 from .serializers import UserSerializer, GoogleLoginSerializer
 
 @api_view(['GET'])
+@extend_schema(request=DummySerializer)
 def google_auth_url(request: HttpRequest):
+
     # google flow 생성.
     flow = get_google_flow(request)
 
@@ -133,7 +136,9 @@ def google_login(request: HttpRequest):
 
 ####################### 폐기 ########################
 @api_view(['GET'])
+@extend_schema(request=DummySerializer)
 def google_oauth_callback(request: HttpRequest):
+
     # google로부터 code와 state를 받음.
     code = request.GET.get('code')
     state = request.GET.get('state')
@@ -230,6 +235,8 @@ class IsGoogleSyncView(APIView):
 
 
 class UserFromTokenView(APIView):
+    
+    @extend_schema(request=DummySerializer)
     def post(self, request):
         token = request.data.get("token")
         if not token:
