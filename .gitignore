@@ -9,5 +9,4 @@ project/.env
 
 project/static/*
 
-project/tasks
 project/task_images

@@ -5,6 +5,7 @@ from rest_framework.permissions import IsAuthenticated
 
 from apps.users.services import JWTAuthentication
 from apps.ocr.views import OcrView
+from apps.tasks.models import Task
 
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
 
@@ -19,8 +20,9 @@ class TaskLLMView(OcrView):
 
         # 1) 이미지 업로드 ->  ocr 처리 수행
         ocr_response = super().post(request, *args, **kwargs)
-        print("ocr_responses:", ocr_response)
+        
         ocr_results = ocr_response.data.get("results", [])
+        task_id = ocr_response.data.get("task_id")
         if not ocr_results:
             return Response(
                 {"error": "OCR 결과가 없습니다."},
@@ -98,8 +100,18 @@ class TaskLLMView(OcrView):
             except json.JSONDecodeError:
                 print("Response용 OCR 파싱 실패, 원본 유지")
 
+        # 5) task 모델 업데이트
+        if task_id:
+            try:
+                task = Task.objects.get(id=task_id)
+                task.ocr_result = "\n".join(all_texts)
+                task.llm_result = json.dumps(results, ensure_ascii=False)
+                task.save(update_fields=["ocr_result", "llm_result"])
+            except Task.DoesNotExist:
+                print(f"Task {task_id}가 없어 저장에 실패했습니다.")
+
 
         return Response(
-            {"ocr_result": parsed_ocr, "llm_result": results, "recommendation": recommends},
+            {"task_id": task_id, "ocr_result": parsed_ocr, "llm_result": results, "recommendation": recommends},
             status=status.HTTP_200_OK,
         )
