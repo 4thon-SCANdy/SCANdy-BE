@@ -2,6 +2,7 @@ from django.db import models
 
 from apps.users.models import User
 from apps.google_calendar.models import GoogleCalendar
+from apps.tasks.models import Task
 
 from external.time_manager import KST
 
@@ -62,6 +63,14 @@ class Schedule(models.Model):
         db_column='google_calendar_id',
         default=None,
     )
+    task = models.ForeignKey(
+		Task,
+		on_delete=models.CASCADE,
+		related_name='schedules',
+        db_column='task_id',
+        null=True,
+        blank=True,
+	)
     google_event_id = models.CharField(max_length=255, null=True, blank=True)
     title = models.CharField(max_length=200, null=False)
     content = models.TextField(null=True, blank=True)
@@ -76,4 +85,11 @@ class Schedule(models.Model):
     updated_at = models.DateTimeField(auto_now=True, null=True)
     locate = models.TextField(null=True, blank=True)
 
-        
+    # 만약 all day라면 시간 데이터를 전부 없앤다.
+    def save(self, *args, **kwargs):
+        if self.all_day:
+            if self.start_datetime:
+                self.start_datetime = self.start_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+            if self.end_datetime:
+                self.end_datetime = self.end_datetime.replace(hour=0, minute=0, second=0, microsecond=0)
+        super().save(*args, **kwargs)

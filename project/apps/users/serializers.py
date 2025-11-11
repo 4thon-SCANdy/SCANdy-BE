@@ -6,3 +6,8 @@ class UserSerializer(serializers.ModelSerializer):
         model = User
         fields = ["id", "email", "is_google_sync", "google_sub", "google_refresh_token"]
         extra_kwargs = {'google_refresh_token': {'write_only': True}}
+
+class GoogleLoginSerializer(serializers.Serializer):
+    code = serializers.CharField()
+    state = serializers.CharField()
+

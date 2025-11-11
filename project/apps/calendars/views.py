@@ -7,8 +7,6 @@ import unicodedata
 from django.utils.timezone import make_naive
 import dateutil.parser
 
-
-
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
@@ -99,7 +97,8 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         # 여기서 구글의 스케줄 리스트를 sched_list에 추가해야 함.
         # user를 받아서 google_sync라면, google calendar에서 가져온다.
         user = self.request.user
-        if user.is_google_sync:
+        # 구글 sync 여부와 tag가 있는지를 함께 검사해야 함.
+        if user.is_google_sync and not tag:
             creds = get_creds_from_google_token(self.request)
             print("GOOGLE SYNC:", user.email, user.is_google_sync)
             print("CREDS:", creds)
@@ -149,6 +148,12 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         ],
         responses={200: ScheduleSerializer(many=True)},
     )
+    @extend_schema(
+        request=ScheduleUpdateSerializer,
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
     def update(self, request, *args, **kwargs):
         schedule = self.get_object()
         
@@ -168,6 +173,11 @@ class ScheduleViewSet(viewsets.ModelViewSet):
         return Response({"detail": "일정 수정을 실패했습니다.", "error":serializer.errors},
                         status=status.HTTP_400_BAD_REQUEST)
     
+    @extend_schema(
+        parameters=[
+            TOKEN_HEADER,
+        ],
+    )
     def destroy(self, request, *args, **kwargs):
         try:
             schedule = self.get_object()
