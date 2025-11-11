@@ -7,8 +7,6 @@ import unicodedata
 from django.utils.timezone import make_naive
 import dateutil.parser
 
-
-
 from rest_framework.response import Response
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action

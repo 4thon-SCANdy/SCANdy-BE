@@ -8,7 +8,9 @@ from rest_framework.permissions import IsAuthenticated
 from apps.users.services import JWTAuthentication
 from apps.ocr.views import OcrView
 from .models import Task
-from .seriallizers import TaskSerializer
+from .seriallizers import TaskSerializer, TaskCreateSerializer
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
 
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
 
