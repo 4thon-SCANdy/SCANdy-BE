@@ -3,11 +3,16 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.permissions import IsAuthenticated
 
+from drf_spectacular.utils import extend_schema
+
 from apps.users.services import JWTAuthentication
 from apps.ocr.views import OcrView
 from apps.tasks.models import Task
+from apps.tasks.seriallizers import TaskCreateSerializer
 
 from .services import create_schedule, parse_response, recommend_time, refine_ocr
+
+from external.custom_swagger import TOKEN_HEADER
 
 import time, json
 
@@ -15,7 +20,10 @@ class TaskLLMView(OcrView):
 
     authentication_classes = [JWTAuthentication]
     permission_classes = [IsAuthenticated]
-
+    @extend_schema(
+        request=TaskCreateSerializer,
+        parameters=[TOKEN_HEADER],
+    )
     def post(self, request, *args, **kwargs): 
 
         # 1) 이미지 업로드 ->  ocr 처리 수행
