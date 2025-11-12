@@ -17,6 +17,7 @@ from .services import create_schedule, parse_response, recommend_time, refine_oc
 
 from external.dummy_serializers import DummySerializer
 from external.custom_swagger import TOKEN_HEADER
+from external.time_manager import ensure_datetime
 
 import time, json
 
@@ -102,15 +103,17 @@ class TaskLLMView(OcrView):
             # 4) 겹치는 일정 조회 + 추천 시간 반환
             recommends = []
             for r in results:
-                start = r.get("start_datetime")
-                end = r.get("end_datetime")
+                start = ensure_datetime(r.get("start_datetime"))
+                end = ensure_datetime(r.get("end_datetime"))
+                print("🔹 recommend_time 입력:", start, end) 
 
                 if not start or not end:
                     print("recommend_time skip: datetime 누락", r)
                     continue  # None 값이면 생략
                 recommend = recommend_time(user, start, end, request)
-                recommends.append(recommend)
-
+                if recommend and "recommendation" in recommend:
+                    recommends.extend(recommend["recommendation"])
+                    
             # response list용으로 변환
             parsed_ocr = refined_ocr
             if isinstance(refined_ocr, list) and len(refined_ocr) == 1 and isinstance(refined_ocr[0], str):
@@ -177,7 +180,6 @@ class TaskViewSet(viewsets.ModelViewSet):
             "ocr_result": ocr_result,
             "llm_result": llm_result
         }]
-
 
         
         image_urls = []

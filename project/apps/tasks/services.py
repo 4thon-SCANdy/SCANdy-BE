@@ -128,21 +128,30 @@ def parse_response(data):
         return []
     
 
+def is_overlap(a_start, a_end, b_start, b_end): # 일정이 겹치는지 확인
+    return (a_start <= b_end) and (b_start <= a_end)
+
 
 # 추출한 날짜와 시간을 캘린더에서 검색하여, 이미 일정이 있다면 1시간 뒤로 추천해주는 로직
 def recommend_time(user, start_str, end_str, request=None):
     start_dt = ensure_datetime(start_str)
     end_dt = ensure_datetime(end_str)
+    duration = end_dt - start_dt
 
     # 1. DB 일정 검색
     overlapping = Schedule.objects.filter(
         calendar=user.calendar,
-        start_datetime__lt=end_dt,
-        end_datetime__gt=start_dt,
+        start_datetime__lte=end_dt,  # 시작 <= 종료로 범위 완화
+        end_datetime__gte=start_dt,
     )
+    print("DB 일정 개수:", overlapping.count())
+
+    all_schedules = [
+        {"start_datetime": s.start_datetime, "end_datetime": s.end_datetime}
+        for s in overlapping
+    ]
 
     # 2. 구글 일정도 검색
-    all_schedules = list(overlapping)
     if user.is_google_sync and request is not None:
         creds = get_creds_from_google_token(request)
         google_schedules = get_schedules_of_user(user, creds, start_dt, end_dt)
@@ -154,32 +163,80 @@ def recommend_time(user, start_str, end_str, request=None):
                 })
         
     # 3. start, end time 정렬
-    all_schedules.sort(key=lambda s: s.start_datetime)
+    all_schedules.sort(key=lambda s: s["start_datetime"])
 
 
-    # 4. 겹치는 시간 피하기
+    # 4. 겹치는지 확인
     proposed_start = start_dt
     proposed_end = end_dt
+    overlap_found = False
 
     for s in all_schedules:
-        s_start = s.start_datetime
-        s_end = s.end_datetime
+        s_start = s["start_datetime"]
+        s_end = s["end_datetime"]
 
-        # 겹친다면 end 이후로 미루기 
-        # 목표 일정이 기존 일정 시작전에 끝나거나, 목표 일정이 기존 일정 끝난 뒤에 시작해야 함.
-        if not (proposed_end <= s_start or proposed_start >= s_end):
-            proposed_start = s_end
-            proposed_end = proposed_start + (end_dt - start_dt)
+        # 겹치는 경우
+        if is_overlap(proposed_start, proposed_end, s_start, s_end):
+            overlap_found = True
+            break
 
-    if proposed_start != start_dt:
-        detail_msg = "겹치는 일정이 있어 다음 가능한 시간으로 조정했습니다."
-    else:
-        detail_msg = "겹치는 일정이 없습니다."
+    # 5. 겹치는 경우 -> 앞뒤 시간대 추천
+    if overlap_found:
+        before_start = start_dt - duration
+        before_end = end_dt - duration
+        after_start = end_dt
+        after_end = end_dt + duration
 
+        # 다른 일정과도 겹치지 않는지 간단히 검사
+        def is_free(start, end):
+            for s in all_schedules:
+                s_start = getattr(s, "start_datetime", s["start_datetime"])
+                s_end = getattr(s, "end_datetime", s["end_datetime"])
+                if s_start == s_end:
+                    s_end = s_start + timedelta(minutes=1) #0초짜리 일정 보정 => 겹침 판정을 위해!
+                if not (end <= s_start or start >= s_end):
+                    return False
+            return True
+
+        candidates = []
+        if before_start and is_free(before_start, before_end):
+            candidates.append({
+                "detail": "이 시간을 추천해요!",
+                "recommended_start": before_start.isoformat(),
+                "recommended_end": before_end.isoformat(),
+            })
+        if after_start and is_free(after_start, after_end):
+            candidates.append({
+                "detail": "이 시간을 추천해요!",
+                "recommended_start": after_start.isoformat(),
+                "recommended_end": after_end.isoformat(),
+            })
+        
+        if candidates:
+            return {"recommendation": candidates}
+        else:
+            # 6. 그날 자체가 안 되는 경우 → 다음날 같은 시간 추천
+            alt_next = start_dt + timedelta(days=1)
+            return {
+                "recommendation": [
+                    {
+                        "detail": "이런 날짜는 어때요?",
+                        "recommended_start": alt_next.isoformat(),
+                        "recommended_end": (alt_next + duration).isoformat()
+                    }
+                ]
+            }
+        
+        
+    # 7. 겹치지 않으면 그대로 추천
     return {
-        "detail": detail_msg,
-        "recommended_start": proposed_start.isoformat(),
-        "recommended_end": proposed_end.isoformat(),
+        "recommendation": [
+            {
+                "detail": "겹치는 일정이 없습니다.",
+                "recommended_start": proposed_start.isoformat(),
+                "recommended_end": proposed_end.isoformat(),
+            }
+        ]
     }
 
 #########################################################################################################
