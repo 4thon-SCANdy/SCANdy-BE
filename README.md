@@ -34,7 +34,7 @@
     <td align="center">
       <img src="https://github.com/user-attachments/assets/d184c0dd-c80f-4d73-8c4c-1aae42ce883d" width="180px" /><br/>
       <a href="https://github.com/SanyoEntertain"><b>권상혁</b></a><br/>
-      소프트웨어학과
+      국민대학교 소프트웨어학과
     </td>
     <td align="center">
       <img src="https://github.com/user-attachments/assets/6a756223-dd8b-4169-ac56-8a32e3443dfb" width="180px" /><br/>
